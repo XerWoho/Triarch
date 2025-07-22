@@ -19,6 +19,7 @@ pub fn get_png(allocator: *std.mem.Allocator, binary: []u8) !PNG_TYPES.PNGStruct
     }
 
     try get_ihdr(allocator, &png, binary, &current_bit_position);
+    try get_plte(allocator, &png, binary, &current_bit_position);
     try get_ancillary(allocator, &png, binary, &current_bit_position);
     try get_idat(allocator, &png, binary, &current_bit_position);
 
@@ -71,20 +72,57 @@ pub fn get_ihdr(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
     cbp.* = current_bit_position;
 }
 
-// pub fn get_plte(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary: []u8, cbp: *u32) !void {
-//     var current_bit_position = cbp.*;
+pub fn get_plte(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary: []u8, cbp: *u32) !void {
+    var current_bit_position = cbp.*;
 
-//     // INIT PLTE
-//     plte_chunk: {
-//         if (png.IHDR.color_type == 0) {
-//             png.PLTE.size = 0;
-//             png.PLTE.crc = 0;
-//             break :plte_chunk;
-//         }
-//     }
+    // INIT PLTE
+    plte_chunk: {
+        if (png.IHDR.color_type == 0 or png.IHDR.color_type == 4) {
+            png.PLTE.size = 0;
+            png.PLTE.crc = &[_]u8{};
 
-//     cbp.* = current_bit_position;
-// }
+            png.PLTE.red = 0;
+            png.PLTE.green = 0;
+            png.PLTE.blue = 0;
+            break :plte_chunk;
+        }
+
+        const plte_size_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+        const plte_size = try LIB_CONVERSIONS.hex_to_int(allocator, plte_size_slice, u32);
+        png.PLTE.size = plte_size;
+
+        const plte_header = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+        if (!std.mem.eql(u8, plte_header, LIB_CONSTANTS.PLTE_SIG)) {
+            current_bit_position -= LIB_CONSTANTS.BYTE_LENGTH * 2;
+            break :plte_chunk;
+        }
+
+        if (plte_size % 3 != 0) {
+            @panic("invalid PLTE chunk size!");
+        }
+
+        const red_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        const green_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        const blue_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+
+        const red_palette = try LIB_CONVERSIONS.hex_to_int(allocator, red_palette_slice, u8);
+        const green_palette = try LIB_CONVERSIONS.hex_to_int(allocator, green_palette_slice, u8);
+        const blue_palette = try LIB_CONVERSIONS.hex_to_int(allocator, blue_palette_slice, u8);
+
+        png.PLTE.red = red_palette;
+        png.PLTE.green = green_palette;
+        png.PLTE.blue = blue_palette;
+
+        const plte_png_crc = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+
+        png.PLTE.crc = plte_png_crc;
+    }
+
+    cbp.* = current_bit_position;
+}
 
 pub fn get_ancillary(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary: []u8, cbp: *u32) !void {
     var current_bit_position = cbp.*;

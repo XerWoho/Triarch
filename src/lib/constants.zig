@@ -3,6 +3,8 @@ pub const BINARY_BASE: u2 = 2;
 pub const BIT_LENGTH: u4 = 1;
 pub const BYTE_LENGTH: u8 = 8;
 
+pub const INT_TO_ASCII_OFFSET: u8 = 48; // the different to go from the string "0" to the int 0 in binary
+
 pub const PNG_SIG = "89504e470d0a1a0a";
 pub const PLTE_SIG = "504C5445";
 pub const IHDR_SIG = "49484452";

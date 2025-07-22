@@ -1,5 +1,10 @@
 pub const PLTEStruct = struct {
     size: u32,
+
+    red: u8,
+    green: u8,
+    blue: u8,
+
     crc: []u8,
 };
 

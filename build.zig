@@ -7,5 +7,8 @@ pub fn build(b: *std.Build) void {
         .target = b.graph.host,
     });
 
+    const clap = b.dependency("clap", .{});
+    exe.root_module.addImport("clap", clap.module("clap"));
+
     b.installArtifact(exe);
 }
