@@ -1,10 +1,8 @@
+const PNG = @import("../png.zig");
+
 pub const PLTEStruct = struct {
     size: u32,
-
-    red: u8,
-    green: u8,
-    blue: u8,
-
+    rgb_array: []PNG.RGBStruct,
     crc: []u8,
 };
 
@@ -20,7 +18,7 @@ pub const IHDRStruct = struct {
     crc: []u8,
 };
 
-pub const IDATStruct = struct { size: u32, compression_method: u8, compression_info: u16, zlib_fcheck_value: u32, zlib_checksum: u16, crc: []u8, data: []u8 };
+pub const IDATStruct = struct { size: u32, compression_method: u8, compression_info: u16, zlib_fcheck_value: u32, adler_zlib_checksum: u16, crc: []u8, data: []u8 };
 
 pub const IENDStruct = struct {
     size: u32,

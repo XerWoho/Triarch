@@ -9,6 +9,7 @@ pub const PNG_SIG = "89504e470d0a1a0a";
 pub const PLTE_SIG = "504C5445";
 pub const IHDR_SIG = "49484452";
 pub const IDAT_SIG = "49444154";
+pub const IEND_SIG = "49454e44";
 
 pub const bKGD_SIG = "624B4744";
 pub const cHRM_SIG = "6348524D";

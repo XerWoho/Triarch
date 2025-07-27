@@ -1,5 +1,6 @@
 const std = @import("std");
 const PNG_TYPES = @import("../types/png/png.zig");
+const CRITICAL_CHUNK_TYPES = @import("../types/png/chunks/critial.zig");
 
 const LIB_HEX = @import("../lib/hex.zig");
 const LIB_STRING = @import("../lib/string.zig");
@@ -21,7 +22,12 @@ pub fn get_png(allocator: *std.mem.Allocator, binary: []u8) !PNG_TYPES.PNGStruct
     try get_ihdr(allocator, &png, binary, &current_bit_position);
     try get_plte(allocator, &png, binary, &current_bit_position);
     try get_ancillary(allocator, &png, binary, &current_bit_position);
-    try get_idat(allocator, &png, binary, &current_bit_position);
+
+    var IDAT_CHUNKS = std.ArrayList(CRITICAL_CHUNK_TYPES.IDATStruct).init(allocator.*);
+    while (!std.mem.eql(u8, binary[current_bit_position + LIB_CONSTANTS.BYTE_LENGTH .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 2], LIB_CONSTANTS.IEND_SIG)) {
+        try get_idat(allocator, binary, &current_bit_position, &IDAT_CHUNKS, @intCast(IDAT_CHUNKS.items.len));
+    }
+    png.IDAT = IDAT_CHUNKS.items;
 
     return png;
 }
@@ -74,23 +80,19 @@ pub fn get_ihdr(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
 
 pub fn get_plte(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary: []u8, cbp: *u32) !void {
     var current_bit_position = cbp.*;
+    var rgb_array = std.ArrayList(PNG_TYPES.RGBStruct).init(allocator.*);
+
+    png.PLTE.size = 0;
+    png.PLTE.crc = &[_]u8{};
 
     // INIT PLTE
     plte_chunk: {
         if (png.IHDR.color_type == 0 or png.IHDR.color_type == 4) {
-            png.PLTE.size = 0;
-            png.PLTE.crc = &[_]u8{};
-
-            png.PLTE.red = 0;
-            png.PLTE.green = 0;
-            png.PLTE.blue = 0;
             break :plte_chunk;
         }
 
         const plte_size_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
         current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
-        const plte_size = try LIB_CONVERSIONS.hex_to_int(allocator, plte_size_slice, u32);
-        png.PLTE.size = plte_size;
 
         const plte_header = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
         current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
@@ -99,21 +101,25 @@ pub fn get_plte(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
             break :plte_chunk;
         }
 
-        if (plte_size % 3 != 0) {
-            @panic("invalid PLTE chunk size!");
+        const plte_size = try LIB_CONVERSIONS.hex_to_int(allocator, plte_size_slice, u32);
+        png.PLTE.size = plte_size;
+
+        while (!std.mem.eql(u8, binary[current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 2 .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 3], LIB_CONSTANTS.IDAT_SIG)) {
+            const red_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+            const green_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+            const blue_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+
+            const red_palette = try LIB_CONVERSIONS.hex_to_int(allocator, red_palette_slice, u8);
+            const green_palette = try LIB_CONVERSIONS.hex_to_int(allocator, green_palette_slice, u8);
+            const blue_palette = try LIB_CONVERSIONS.hex_to_int(allocator, blue_palette_slice, u8);
+
+            const RGB: PNG_TYPES.RGBStruct = PNG_TYPES.RGBStruct{
+                .R = red_palette,
+                .G = green_palette,
+                .B = blue_palette,
+            };
+            try rgb_array.append(RGB);
         }
-
-        const red_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
-        const green_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
-        const blue_palette_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
-
-        const red_palette = try LIB_CONVERSIONS.hex_to_int(allocator, red_palette_slice, u8);
-        const green_palette = try LIB_CONVERSIONS.hex_to_int(allocator, green_palette_slice, u8);
-        const blue_palette = try LIB_CONVERSIONS.hex_to_int(allocator, blue_palette_slice, u8);
-
-        png.PLTE.red = red_palette;
-        png.PLTE.green = green_palette;
-        png.PLTE.blue = blue_palette;
 
         const plte_png_crc = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
         current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
@@ -121,6 +127,11 @@ pub fn get_plte(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
         png.PLTE.crc = plte_png_crc;
     }
 
+    if (rgb_array.items.len % 3 != 0) {
+        @panic("invalid PLTE chunk!");
+    }
+
+    png.PLTE.rgb_array = rgb_array.items;
     cbp.* = current_bit_position;
 }
 
@@ -138,7 +149,8 @@ pub fn get_ancillary(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, b
     cbp.* = current_bit_position;
 }
 
-pub fn get_idat(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary: []u8, cbp: *u32) !void {
+pub fn get_idat(allocator: *std.mem.Allocator, binary: []u8, cbp: *u32, idat_chunks: *std.ArrayList(CRITICAL_CHUNK_TYPES.IDATStruct), idat_index: u16) !void {
+    var IDAT: CRITICAL_CHUNK_TYPES.IDATStruct = CRITICAL_CHUNK_TYPES.IDATStruct{ .compression_info = 0, .compression_method = 0, .crc = &[_]u8{}, .data = &[_]u8{}, .size = 0, .adler_zlib_checksum = 0, .zlib_fcheck_value = 0 };
     var current_bit_position = cbp.*;
 
     // INIT IDAT
@@ -146,12 +158,39 @@ pub fn get_idat(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
     const idat_size_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
     current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
     const idat_size = try LIB_CONVERSIONS.hex_to_int(allocator, idat_size_slice, u32);
-    png.IDAT.size = idat_size;
+    IDAT.size = idat_size;
 
     const idat_header_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
     current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
     if (!std.mem.eql(u8, idat_header_slice, LIB_CONSTANTS.IDAT_SIG)) {
         @panic("not correct IDAT header!");
+    }
+
+    if (idat_index > 0) {
+        const compressed_data = binary[current_bit_position .. current_bit_position + (idat_size * 2) - 8];
+        current_bit_position += (idat_size * 2) - 8; // =>  CRC
+
+        var adler_zlib_checksum: u16 = 0;
+        if (std.mem.eql(u8, binary[current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 3 .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 4], LIB_CONSTANTS.IEND_SIG)) {
+            const adler_zlib_checksum_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+            adler_zlib_checksum = try LIB_CONVERSIONS.hex_to_int(allocator, adler_zlib_checksum_slice, u16);
+            current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+        }
+
+        const idat_png_crc = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+
+        // define IDAT
+        IDAT.compression_info = 0;
+        IDAT.compression_method = 0;
+        IDAT.zlib_fcheck_value = 0;
+        IDAT.adler_zlib_checksum = adler_zlib_checksum;
+        IDAT.crc = idat_png_crc;
+        IDAT.data = compressed_data;
+
+        try idat_chunks.append(IDAT);
+        cbp.* = current_bit_position;
+        return;
     }
 
     const deflate_compression = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BIT_LENGTH * 2];
@@ -161,26 +200,39 @@ pub fn get_idat(allocator: *std.mem.Allocator, png: *PNG_TYPES.PNGStruct, binary
 
     // validate the zlib header
     const validation_value_hex = try std.fmt.allocPrint(allocator.*, "{s}{s}", .{ deflate_compression, zlib_fcheck_value });
+
     const validation_value = try LIB_CONVERSIONS.hex_to_int(allocator, validation_value_hex, u16);
     if (validation_value % 31 != 0) {
         @panic("invalid zlib header!");
     }
 
-    const compressed_data = binary[current_bit_position .. current_bit_position + (idat_size * 2) - 12];
-    current_bit_position += (idat_size * 2) - 12; // - 12 => ZLIB header and CRC
+    var adler_zlib_checksum: u16 = 0;
+    if (std.mem.eql(u8, binary[current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 2 .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH * 3], LIB_CONSTANTS.IEND_SIG)) {
+        const compressed_data = binary[current_bit_position .. current_bit_position + (idat_size * 2) - 12];
+        current_bit_position += (idat_size * 2) - 12; // => ZLIB CHECK VALUE (2), COMPRESSION METHOD (2), ADLER32 (8)
+        IDAT.data = compressed_data;
 
-    const zlib_checksum = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
-    current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+        const adler_zlib_checksum_slice = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
+        adler_zlib_checksum = try LIB_CONVERSIONS.hex_to_int(allocator, adler_zlib_checksum_slice, u16);
+        current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
+    } else {
+        const compressed_data = binary[current_bit_position .. current_bit_position + (idat_size * 2) - 4];
+        current_bit_position += (idat_size * 2) - 4; // => ZLIB CHECK VALUE (2), COMPRESSION METHOD (2)
+        IDAT.data = compressed_data;
+    }
+
+    std.debug.print("{d}\n", .{adler_zlib_checksum});
+
     const idat_png_crc = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH];
     current_bit_position += LIB_CONSTANTS.BYTE_LENGTH;
 
     // define IDAT
-    png.IDAT.compression_info = try LIB_CONVERSIONS.hex_to_int(allocator, deflate_compression[0..1], u16);
-    png.IDAT.compression_method = try LIB_CONVERSIONS.hex_to_int(allocator, deflate_compression[1..2], u8);
-    png.IDAT.zlib_checksum = try LIB_CONVERSIONS.hex_to_int(allocator, zlib_checksum, u16);
-    png.IDAT.zlib_fcheck_value = validation_value;
-    png.IDAT.crc = idat_png_crc;
-    png.IDAT.data = compressed_data;
+    IDAT.compression_info = try LIB_CONVERSIONS.hex_to_int(allocator, deflate_compression[0..1], u16);
+    IDAT.compression_method = try LIB_CONVERSIONS.hex_to_int(allocator, deflate_compression[1..2], u8);
+    IDAT.adler_zlib_checksum = adler_zlib_checksum;
+    IDAT.zlib_fcheck_value = validation_value;
+    IDAT.crc = idat_png_crc;
 
+    try idat_chunks.append(IDAT);
     cbp.* = current_bit_position;
 }

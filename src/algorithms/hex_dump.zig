@@ -10,7 +10,7 @@ pub fn get_hex_dump(allocator: *std.mem.Allocator, file_path: []u8) !std.ArrayLi
     var buf_reader = std.io.bufferedReader(file.reader());
     var in_stream = buf_reader.reader();
 
-    var buf: [1024]u8 = undefined;
+    var buf: [4096]u8 = undefined;
     var img_string = std.ArrayList(u8).init(allocator.*);
     defer img_string.deinit();
     while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {

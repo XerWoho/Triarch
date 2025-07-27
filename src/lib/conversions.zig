@@ -50,7 +50,7 @@ pub fn int_to_binary(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u
     return return_string;
 }
 
-pub fn hex_to_binary(gpa: *std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayListAligned(u8, null) {
+pub fn hex_to_binary(gpa: *std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayList(u8) {
     var return_string = std.ArrayList(u8).init(gpa.*);
     var index: u32 = 0;
 

@@ -86,66 +86,95 @@ pub fn dist_fixed_huffman(symbol: u8) !dist_fixed_symbols {
     return dist_fixed_symbols{ .symbol = symbol, .base_distance = base_distances[symbol], .extra_bits = extra_bits[symbol] };
 }
 
-const fixed_symbols = struct {
+const hlit_fixed_symbols = struct {
     symbol: u16,
     base_length: u32,
     extra_bits: u8,
 };
-fn fixed_huffman(symbol: u16) !fixed_symbols {
+fn hlit_fixed_huffman(symbol: u16) !hlit_fixed_symbols {
     const DEF_BASE_LENGTH: u8 = 3;
 
     return switch (symbol) {
-        256 => fixed_symbols{ .symbol = symbol, .base_length = 0, .extra_bits = 0 },
-        257...264 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * 0) + (symbol - 257) * 1, .extra_bits = 0 },
-        265...268 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 0)) + (symbol - 265) * 2, .extra_bits = 1 },
-        269...272 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 1)) + (symbol - 269) * 4, .extra_bits = 2 },
-        273...276 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 2)) + (symbol - 273) * 8, .extra_bits = 3 },
-        277...280 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 3)) + (symbol - 277) * 16, .extra_bits = 4 },
-        281...284 => fixed_symbols{ .symbol = symbol, .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 4)) + (symbol - 281) * 16, .extra_bits = 5 },
-        285 => fixed_symbols{ .symbol = symbol, .base_length = 258, .extra_bits = 0 },
+        256 => hlit_fixed_symbols{ .symbol = symbol, .base_length = 0, .extra_bits = 0 },
+        257...264 => hlit_fixed_symbols{
+            .symbol = symbol, // yada
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * 0) + (symbol - 257) * 1,
+            .extra_bits = 0,
+        },
+        265...268 => hlit_fixed_symbols{
+            .symbol = symbol, // yada
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 0)) + (symbol - 265) * 2,
+            .extra_bits = 1,
+        },
+        269...272 => hlit_fixed_symbols{
+            .symbol = symbol, // yada
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 1)) + (symbol - 269) * 4,
+            .extra_bits = 2,
+        },
+        273...276 => hlit_fixed_symbols{
+            .symbol = symbol, // yada
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 2)) + (symbol - 273) * 8,
+            .extra_bits = 3,
+        },
+        277...280 => hlit_fixed_symbols{
+            .symbol = symbol, // yada
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 3)) + (symbol - 277) * 16,
+            .extra_bits = 4,
+        },
+        281...284 => hlit_fixed_symbols{
+            .symbol = symbol, // 3 + (8 * (2^4 = 16) = 128) = 131 + (1 * 16) = 147
+            .base_length = (DEF_BASE_LENGTH + LIB_CONSTANTS.BYTE_LENGTH * std.math.pow(u16, LIB_CONSTANTS.BINARY_BASE, 4)) + (symbol - 281) * 32,
+            .extra_bits = 5,
+        },
+        285 => hlit_fixed_symbols{ .symbol = symbol, .base_length = 258, .extra_bits = 0 },
         else => @panic("invalid symbol length!"),
     };
 }
 
-fn handle_btype(gpa: *std.mem.Allocator, binary: []u8, btype: u2, current_bit_position: *u32) !std.ArrayList(u8) {
-    var data = std.ArrayList(u8).init(gpa.*);
+pub fn get_huffman(gpa: *std.mem.Allocator, binary: []u8) !std.ArrayList(u8) {
+    var complete_blocks = std.ArrayList(u8).init(gpa.*);
+    var current_bit_position: u32 = 0;
+
+    while (true) {
+        std.debug.print("CBP: {d}\n", .{current_bit_position});
+        if (current_bit_position >= binary.len) break;
+        const BFINAL = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BIT_LENGTH];
+        current_bit_position += LIB_CONSTANTS.BIT_LENGTH;
+        std.debug.print("BFINAL: {d}\n", .{BFINAL});
+
+        const BTYPE = try LIB_STRING.reverse_string(gpa, binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BIT_LENGTH * 2]);
+        current_bit_position += LIB_CONSTANTS.BIT_LENGTH * 2;
+        defer BTYPE.deinit();
+        const int_BTYPE = try LIB_CONVERSIONS.binary_to_int(BTYPE.items, u2);
+
+        try handle_btype(gpa, binary, int_BTYPE, &current_bit_position, &complete_blocks);
+
+        if (BFINAL[0] == 49) break;
+    }
+
+    return complete_blocks;
+}
+
+fn handle_btype(gpa: *std.mem.Allocator, binary: []u8, btype: u2, current_bit_position: *u32, complete_blocks: *std.ArrayList(u8)) !void {
     switch (btype) {
         // BTYPE 00
         0 => {
-            data = try no_huffman(gpa, binary, current_bit_position);
+            try no_huffman(gpa, binary, current_bit_position, complete_blocks);
         },
         // BTYPE 01
         1 => {
-            data = try static_huffman(gpa, binary, current_bit_position);
+            try static_huffman(gpa, binary, current_bit_position, complete_blocks);
         },
         // BTYPE 10
         2 => {
-            data = try dynamic_huffman(gpa, binary, current_bit_position);
+            try dynamic_huffman(gpa, binary, current_bit_position, complete_blocks);
         },
         // BTYPE 11 => reserved error
         3 => @panic("invalid huffman"),
     }
-
-    return data;
 }
 
-pub fn get_huffman_type(gpa: *std.mem.Allocator, binary: []u8) !std.ArrayList(u8) {
-    var current_bit_position: u32 = 0;
-
-    const BFINAL = binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BIT_LENGTH];
-    current_bit_position += LIB_CONSTANTS.BIT_LENGTH;
-    _ = BFINAL;
-
-    const BTYPE = try LIB_STRING.reverse_string(gpa, binary[current_bit_position .. current_bit_position + LIB_CONSTANTS.BIT_LENGTH * 2]);
-    current_bit_position += LIB_CONSTANTS.BIT_LENGTH * 2;
-    defer BTYPE.deinit();
-    const int_BTYPE = try LIB_CONVERSIONS.binary_to_int(BTYPE.items, u2);
-
-    const handled = try handle_btype(gpa, binary, int_BTYPE, &current_bit_position);
-    return handled;
-}
-
-pub fn no_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.ArrayList(u8) {
+pub fn no_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !void {
     std.debug.print("NO HUFFMAN SETTING\n\n", .{});
     var current_bit_position = cbp.*;
     // skip the 5 bits to make a full byte out of the header |BFINAL (1b)|BTYPE(2b)|...(5b)|LEN|NLEN|...
@@ -165,23 +194,20 @@ pub fn no_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.ArrayLi
         @panic("invalid LEN and NLEN");
     }
 
-    var BUILDER = std.ArrayList(u8).init(gpa.*);
     var enumerate: u32 = 0;
     while (enumerate < parsed_LEN) {
         const data_block = binary[current_bit_position + (enumerate * LIB_CONSTANTS.BYTE_LENGTH) .. current_bit_position + LIB_CONSTANTS.BYTE_LENGTH + (enumerate * LIB_CONSTANTS.BYTE_LENGTH)];
         const parsed_data_block: u8 = try LIB_CONVERSIONS.binary_to_int(data_block, u8);
-        try BUILDER.append(parsed_data_block);
+        try complete_blocks.append(parsed_data_block);
         enumerate += 1;
     }
 
     cbp.* = current_bit_position;
-    return BUILDER;
 }
 
-pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.ArrayList(u8) {
+pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !void {
     std.debug.print("STATIC HUFFMAN SETTING\n\n", .{});
     var current_bit_position = cbp.*;
-    var BUILDER = std.ArrayList(u8).init(gpa.*);
 
     // fixed huffman tree
     // 0 - 143 | 8 bits   (00110000 - 10111111) (48 - 191)
@@ -200,7 +226,7 @@ pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Arr
                 break;
             }
 
-            const symbol_struct = try fixed_huffman(symbol);
+            const symbol_struct = try hlit_fixed_huffman(symbol);
 
             const extra_bits_stored = try LIB_STRING.reverse_string(gpa, binary[current_bit_position .. current_bit_position + symbol_struct.extra_bits]);
             defer extra_bits_stored.deinit();
@@ -229,7 +255,7 @@ pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Arr
             // check if its between those values
             if (48 > first_eight or first_eight > 191) break :check_if_eight_valid;
             current_bit_position += 8;
-            try BUILDER.append(@intCast(0 + first_eight - 48));
+            try complete_blocks.append(@intCast(0 + first_eight - 48));
             continue;
         }
 
@@ -244,7 +270,7 @@ pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Arr
                 std.debug.print("INVALID SYMBOL", .{});
                 @panic("INVALID SYMBOL");
             }
-            const symbol_struct = try fixed_huffman(symbol);
+            const symbol_struct = try hlit_fixed_huffman(symbol);
 
             const extra_bits_stored = try LIB_STRING.reverse_string(gpa, binary[current_bit_position .. current_bit_position + symbol_struct.extra_bits]);
             defer extra_bits_stored.deinit();
@@ -273,13 +299,12 @@ pub fn static_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Arr
             // check if its between those values
             if (400 > first_nine or first_nine > 511) break :check_if_nine_valid;
             current_bit_position += 9;
-            try BUILDER.append(@intCast(144 + first_nine - 400));
+            try complete_blocks.append(@intCast(144 + first_nine - 400));
             continue;
         }
     }
 
     cbp.* = current_bit_position;
-    return BUILDER;
 }
 
 const CODE_LENGTH_SYMBOLS = struct { symbol: u16, bits_length: u8, huffman_code: []u8 };
@@ -380,7 +405,7 @@ pub fn symbols_builder(
     return BUILDER;
 }
 
-pub fn dynamic_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.ArrayList(u8) {
+pub fn dynamic_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !void {
     std.debug.print("DYNAMIC HUFFMAN SETTING\n\n", .{});
 
     var current_bit_position = cbp.*;
@@ -533,7 +558,6 @@ pub fn dynamic_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Ar
         }
     }
 
-    var BUILDER = std.ArrayList(u8).init(gpa.*);
     var HLIT_BIT_STORER = std.ArrayList(u8).init(gpa.*);
 
     while (current_bit_position < binary.len) {
@@ -555,15 +579,17 @@ pub fn dynamic_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Ar
         HLIT_BIT_STORER.clearAndFree();
 
         if (hlit_symbol.? == 256) {
+            std.debug.print("end.\n", .{});
             break;
         }
         if (hlit_symbol.? < 256) {
             const append_symbol: u8 = @intCast(hlit_symbol.?);
-            try BUILDER.append(append_symbol);
+            try complete_blocks.append(append_symbol);
+            // std.debug.print("lit {d}\n", .{hlit_symbol.?});
             continue;
         }
 
-        const MATCH_SYMBOL = try fixed_huffman(hlit_symbol.?);
+        const MATCH_SYMBOL = try hlit_fixed_huffman(hlit_symbol.?);
         const EXTRA_BITS = binary[current_bit_position .. current_bit_position + MATCH_SYMBOL.extra_bits];
         const rev_HLIT_EXTRA_BITS = try LIB_STRING.reverse_string(gpa, EXTRA_BITS);
         defer rev_HLIT_EXTRA_BITS.deinit();
@@ -603,17 +629,18 @@ pub fn dynamic_huffman(gpa: *std.mem.Allocator, binary: []u8, cbp: *u32) !std.Ar
             break;
         }
 
-        // std.debug.print("match {d} {d}\n", .{ TOTAL_COPIES, TOTAL_DISTANCE });
-        if (BUILDER.items.len < TOTAL_DISTANCE) {
-            std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ BUILDER.items.len, TOTAL_DISTANCE });
+        // if (current_bit_position > 519506) {
+        //     std.debug.print("match {d} {d} (symbol: {d} - ex: {d})\n", .{ TOTAL_COPIES, TOTAL_DISTANCE, hlit_symbol.?, EXTRA_BITS });
+        // }
+        if (complete_blocks.items.len < TOTAL_DISTANCE) {
+            std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ complete_blocks.items.len, TOTAL_DISTANCE });
             @panic("TOTAL DISTANCE exceeds length");
         }
 
-        for (BUILDER.items.len - TOTAL_DISTANCE..BUILDER.items.len - TOTAL_DISTANCE + TOTAL_COPIES) |i| {
-            try BUILDER.append(BUILDER.items[i]);
+        for (complete_blocks.items.len - TOTAL_DISTANCE..complete_blocks.items.len - TOTAL_DISTANCE + TOTAL_COPIES) |i| {
+            try complete_blocks.append(complete_blocks.items[i]);
         }
     }
 
     cbp.* = current_bit_position;
-    return BUILDER;
 }
