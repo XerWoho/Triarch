@@ -1,5 +1,6 @@
 .vscode
 .zig-cache
 zig-out
+tests/
 
 infgen
