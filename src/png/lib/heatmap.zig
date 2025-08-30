@@ -1,12 +1,12 @@
 const std = @import("std");
-const PNG_TYPES = @import("../../png/types/png/png.zig");
+const PngTypes = @import("../../png/types/png/png.zig");
 const PIXEL_TYPE = @import("../../png/types/pixels.zig");
 
-const CONSTANTS = @import("../constants.zig");
+const Constants = @import("../constants.zig");
 
-pub fn get_heatmap(
-    gpa: *std.mem.Allocator, 
-    png: *const PNG_TYPES.PNGStruct, 
+pub fn getHeatmap(
+    allocator: std.mem.Allocator, 
+    png: *const PngTypes.PNGStruct, 
     grayscale_data: []PIXEL_TYPE.PixelStruct, 
 
     invert: bool,
@@ -15,22 +15,29 @@ pub fn get_heatmap(
 ) !std.ArrayList([]f32) {
     const WIDTH = png.IHDR.width;
     const HEIGHT = png.IHDR.height;
-    const WIDTH_1P: u16 = @divTrunc(WIDTH, 10);
-    const HEIGHT_1P: u16 = @divTrunc(HEIGHT, 10);
+    const WIDTH_1P: u16 = @divTrunc(WIDTH, 10); // 10 Percent of the Width
+    const HEIGHT_1P: u16 = @divTrunc(HEIGHT, 10); // 10 Percent of the Height  (read more below)
 
     const CONST_SPLIT_WIDTH = @divTrunc(WIDTH, split_w);
     const CONST_SPLIT_HEIGHT = @divTrunc(HEIGHT, split_h);
     
+    // Checking to see the if overflow of the division
+    // for the square exceeds the 10% threshold 
+    // of the width or the height
+    //
+    // if it is less than 10%, we can just ignore the 
+    // overflow and move on. Else we store the Remainders
+    // and add them during the heatmap creation.
     var REMAINDER_WIDTH: u16 = WIDTH % split_w;
     if(REMAINDER_WIDTH < WIDTH_1P) REMAINDER_WIDTH = 0;
     var REMAINDER_HEIGHT: u16 = HEIGHT % split_h;
     if(REMAINDER_HEIGHT < HEIGHT_1P) REMAINDER_HEIGHT = 0;
 
-    var HEATMAP = std.ArrayList([]f32).init(gpa.*);
+    var HEATMAP = std.ArrayList([]f32).init(allocator);
     var main_height_index: u64 = 0;
     var main_width_index: u64 = 0;
     while (main_height_index < HEIGHT) {
-        var HEATMAP_ROW = std.ArrayList(f32).init(gpa.*);
+        var HEATMAP_ROW = std.ArrayList(f32).init(allocator);
         var EXTRA_HEIGHT: u8 = 0;
         if(REMAINDER_HEIGHT > 0) {
             EXTRA_HEIGHT = 1;
@@ -71,7 +78,7 @@ pub fn get_heatmap(
                     const average: i32 = @divTrunc(total_sum, 3);
 
                     if(invert) {
-                        square_sum += @abs(average - CONSTANTS.RGB_WHITE); // invert the colors (255 -> 0 | 0 -> 255)
+                        square_sum += @abs(average - Constants.RGB_WHITE); // invert the colors (255 -> 0 | 0 -> 255)
                     } else {
                         square_sum += @abs(average);
                     }
@@ -88,7 +95,7 @@ pub fn get_heatmap(
             }
 
             const square_sum_float: f32 = @floatFromInt(square_sum_average);
-            const rgb_white_float: f32 = @floatFromInt(CONSTANTS.RGB_WHITE);
+            const rgb_white_float: f32 = @floatFromInt(Constants.RGB_WHITE);
             try HEATMAP_ROW.append(square_sum_float / rgb_white_float);
             main_width_index += SPLIT_WIDTH;
         }

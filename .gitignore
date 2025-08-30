@@ -4,3 +4,4 @@ zig-out
 tests/
 
 infgen
+output.json

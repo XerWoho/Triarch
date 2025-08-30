@@ -1,35 +1,34 @@
 const std = @import("std");
 
-const CONSTANTS = @import("../constants.zig");
-const LIB_STRING = @import("string.zig");
+const Constants = @import("../constants.zig");
+const String = @import("string.zig");
 
 // to BINARY
-pub fn int_to_binary(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, null) {
+pub fn intToBinary(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, null) {
     const CALCULATE_MAX_VALUE = struct {
         const MAX_VAL = struct {
             value: u32,
             pow: u16,
         };
 
-        fn find_max_value(sb: u32) MAX_VAL {
-            const BASE_SYS: u8 = 2;
+        fn findMaxValue(sb: u32) MAX_VAL {
             var MAX: u16 = 1;
-            const current_max_value = std.math.pow(u32, BASE_SYS, MAX);
+            const current_max_value = std.math.pow(u32, Constants.BINARY_BASE, MAX);
             while (current_max_value < sb) {
                 MAX += 1;
             }
             MAX -= 1;
-            const max_value: u32 = std.math.pow(u32, BASE_SYS, MAX);
+            const max_value: u32 = std.math.pow(u32, Constants.BINARY_BASE, MAX);
             return MAX_VAL{ .value = max_value, .pow = MAX };
         }
     };
 
     var stored_byte: u32 = byte;
-    var return_string = std.ArrayList(u8).init(gpa.*);
+    var return_string = std.ArrayList(u8).init(allocator);
     var last_max: i16 = -1;
 
     while (stored_byte != 0) {
-        const max_value = CALCULATE_MAX_VALUE.find_max_value(stored_byte);
+        const max_value = CALCULATE_MAX_VALUE.findMaxValue(stored_byte);
         stored_byte = stored_byte - max_value.value;
         if (last_max == -1) {
             last_max = @intCast(max_value.pow);
@@ -50,28 +49,28 @@ pub fn int_to_binary(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u
     return return_string;
 }
 
-pub fn hex_to_binary(gpa: *std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayList(u8) {
-    var return_string = std.ArrayList(u8).init(gpa.*);
+pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayList(u8) {
+    var return_string = std.ArrayList(u8).init(allocator);
     var index: u32 = 0;
 
-    var byte = std.ArrayList(u8).init(gpa.*);
+    var byte = std.ArrayList(u8).init(allocator);
     while (index < hex.len) {
         const H = hex[index .. index + 1];
 
-        const KEY_INDEX = std.mem.indexOf(u8, &CONSTANTS.HEX_KEYS, H);
+        const KEY_INDEX = std.mem.indexOf(u8, &Constants.HEX_KEYS, H);
         if (KEY_INDEX == null) {
             std.debug.print("HEX KEY NOT FOUND {s}\n", .{H});
             index += 1;
             continue;
         }
 
-        const VALUE = CONSTANTS.HEX_VALUES[KEY_INDEX.?];
-        const converted_value = try std.fmt.allocPrint(gpa.*, "{s}", .{VALUE});
+        const VALUE = Constants.HEX_VALUES[KEY_INDEX.?];
+        const converted_value = try std.fmt.allocPrint(allocator, "{s}", .{VALUE});
         try byte.appendSlice(converted_value);
 
         if (index % 2 != 0) {
             if (lsb) {
-                var reversed_converted_value = try LIB_STRING.reverse_string(gpa, byte.items);
+                var reversed_converted_value = try String.reverseString(allocator, byte.items);
                 defer reversed_converted_value.deinit();
                 try return_string.appendSlice(reversed_converted_value.items);
             } else {
@@ -86,12 +85,12 @@ pub fn hex_to_binary(gpa: *std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayLi
 }
 
 // to HEX
-pub fn int_to_hex(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, null) {
+pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, null) {
     const DIVISOR: u8 = 16;
     var multiple: u32 = 0;
     var last_stored_quotient: u32 = byte;
 
-    var return_string = std.ArrayList(u8).init(gpa.*);
+    var return_string = std.ArrayList(u8).init(allocator);
 
     while (last_stored_quotient != 0) {
         // does division
@@ -101,9 +100,9 @@ pub fn int_to_hex(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, 
         }
         const remainder: u32 = last_stored_quotient - DIVISOR * multiple;
         if (remainder > 9) {
-            try return_string.insertSlice(0, CONSTANTS.HEX_LETTERS[remainder - 10]);
+            try return_string.insertSlice(0, Constants.HEX_LETTERS[remainder - 10]);
         } else {
-            const int_to_num = try std.fmt.allocPrint(gpa.*, "{d}", .{remainder});
+            const int_to_num = try std.fmt.allocPrint(allocator, "{d}", .{remainder});
             try return_string.insertSlice(0, int_to_num);
         }
 
@@ -127,29 +126,29 @@ pub fn int_to_hex(gpa: *std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, 
     return return_string;
 }
 
-pub fn binary_to_hex(gpa: *std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
-    const first_conversion = try binary_to_int(bytes, false, u32);
-    const second_conversion = try int_to_hex(gpa, first_conversion);
+pub fn binaryToHex(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
+    const first_conversion = try binaryToInt(bytes, false, u32);
+    const second_conversion = try intToHex(allocator, first_conversion);
 
     return second_conversion;
 }
 
 // to INT
-pub fn hex_to_int(gpa: *std.mem.Allocator, byte: []u8, return_type: type) !return_type {
-    const hex = try std.fmt.allocPrint(gpa.*, "0x{s}", .{byte});
+pub fn hexToInt(allocator: std.mem.Allocator, byte: []u8, return_type: type) !return_type {
+    const hex = try std.fmt.allocPrint(allocator, "0x{s}", .{byte});
     const int: u32 = try std.fmt.parseInt(u32, hex, 0);
 
     const final_int: return_type = @truncate(int);
     return final_int;
 }
 
-pub fn binary_to_int(bytes: []u8, lsb: bool, return_type: type) !return_type {
+pub fn binaryToInt(bytes: []u8, lsb: bool, return_type: type) !return_type {
     var final_int: return_type = 0;
 
     var b = bytes;
-    var buf: [CONSTANTS.BYTE_LENGTH * 2]u8 = undefined;
+    var buf: [Constants.BYTE_LENGTH * 2]u8 = undefined;
     if(lsb) {
-        b = try LIB_STRING.reverse_string_no_alloc(bytes, &buf);
+        b = try String.reverseStringNoAlloc(bytes, &buf);
     }
 
     var index = b.len;

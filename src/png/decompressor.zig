@@ -1,51 +1,63 @@
 const std = @import("std");
 const clap = @import("clap");
 
-const LIB_CONVERSIONS = @import("lib/conversions.zig");
+const Conversions = @import("lib/conversions.zig");
+const Grayscale = @import("lib/grayscale.zig");
 
-const A_hex_dump = @import("algorithms/hex_dump.zig");
-const A_png = @import("algorithms/png.zig");
-const A_huffman = @import("algorithms/huffman.zig");
-const A_filter = @import("algorithms/filter.zig");
-const A_grayscale = @import("algorithms/grayscale.zig");
+const HexDump = @import("algorithms/hex_dump.zig");
+const Png = @import("algorithms/png.zig");
+const Huffman = @import("algorithms/huffman.zig");
+const Filter = @import("algorithms/filter.zig");
 
-const PNG_TYPES = @import("./types/png/png.zig");
-const PIXEL_TYPES = @import("./types/pixels.zig");
+const PngTypes = @import("./types/png/png.zig");
+const PixelTypes = @import("./types/pixels.zig");
 
-const DECOMPRESS = struct {
-    png: PNG_TYPES.PNGStruct,
+const DecompressedPngStruct = struct {
+    png: PngTypes.PNGStruct,
     hex_dump: std.ArrayList(u8),
-    pixels: std.ArrayList(PIXEL_TYPES.PixelStruct),
+    pixels: std.ArrayList(PixelTypes.PixelStruct),
 };
 
-pub fn decompress_png(allocator: *std.mem.Allocator, path_string: []u8) !DECOMPRESS {
-    const allocated_hex_dump = A_hex_dump.get_hex_dump(allocator, path_string) catch |err| {
+pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !DecompressedPngStruct {
+    const allocated_hexDump = HexDump.getHexDump(allocator, path_string) catch |err| {
         std.debug.print("Error: {s}\n", .{@errorName(err)});
         std.process.exit(0);
     };
 
     // INIT PNG
-    var png = try A_png.get_png(allocator, allocated_hex_dump.items);
+    var png = Png.getPng(allocator, allocated_hexDump.items) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Getting PNG data failed.");
+    };
     // CONVERT PNG DATA
-    var data = std.ArrayList(u8).init(allocator.*);
+    var data = std.ArrayList(u8).init(allocator);
     for (0..png.IDAT.len) |i| {
         const idat = png.IDAT[i];
         try data.appendSlice(idat.data);
     }
     defer data.deinit();
-    const binary_hex = try LIB_CONVERSIONS.hex_to_binary(allocator, data.items, true);
+    const binary_hex = Conversions.hexToBinary(allocator, data.items, true) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Binary to hex conversion failed.");
+    };
     defer binary_hex.deinit();
 
     // INIT HUFFMAN
-    const uncompressed_data = try A_huffman.get_huffman(allocator, binary_hex.items);
+    const uncompressed_data = Huffman.getHuffman(allocator, binary_hex.items) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Getting huffman data failed.");
+    };
     defer uncompressed_data.deinit();
 
     // INIT FILTER
-    const pixel_data = try A_filter.get_filter(allocator, uncompressed_data, &png);
+    const pixel_data = Filter.getFilter(allocator, uncompressed_data, &png) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Conversion of pixels via filter failed.");
+    };
     
-    return DECOMPRESS{
+    return DecompressedPngStruct{
         .png = png,
-        .hex_dump = allocated_hex_dump,
+        .hex_dump = allocated_hexDump,
         .pixels = pixel_data,
     };
 }

@@ -1,7 +1,7 @@
 const std = @import("std");
 
-pub fn remove_whitespace(gpa: *std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
-	var removed_whitespace = std.ArrayList(u8).init(gpa.*);
+pub fn removeWhitespace(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
+	var removed_whitespace = std.ArrayList(u8).init(allocator);
 
 	for(bytes) |byte| {
 		if(std.ascii.isWhitespace(byte)) continue;
@@ -11,7 +11,7 @@ pub fn remove_whitespace(gpa: *std.mem.Allocator, bytes: []u8) !std.ArrayListAli
 	return removed_whitespace;
 }
 
-pub fn reverse_string_no_alloc(bytes: []u8, out_buf: []u8) ![]u8 {
+pub fn reverseStringNoAlloc(bytes: []u8, out_buf: []u8) ![]u8 {
     if (out_buf.len < bytes.len) return error.BufferTooSmall;
 
     var index = bytes.len;
@@ -24,8 +24,8 @@ pub fn reverse_string_no_alloc(bytes: []u8, out_buf: []u8) ![]u8 {
     return out_buf[0..bytes.len];
 }
 
-pub fn reverse_string(gpa: *std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
-	var reversed_string = std.ArrayList(u8).init(gpa.*);
+pub fn reverseString(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
+	var reversed_string = std.ArrayList(u8).init(allocator);
 
 	var index = bytes.len;
 	while(index > 0) {

@@ -1,4 +1,4 @@
-pub const HUFFMANStruct = struct {
+pub const HuffmanStruct = struct {
     btype: u2,
     bfinal: u1,
     hclen: u32,
@@ -6,4 +6,4 @@ pub const HUFFMANStruct = struct {
     hlit: u16,
 };
 
-pub const CODE_LENGTH_SYMBOLS = struct { symbol: u16, bits_length: u8, huffman_code: []u8 };
+pub const CodeLengthSymbolsStruct = struct { symbol: u16, bits_length: u8, huffman_code: []u8 };

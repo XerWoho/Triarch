@@ -1,9 +1,9 @@
 const std = @import("std");
 const clap = @import("clap");
-const decompress = @import("./png/decompressor.zig");
 
-const LIB_GRAYSCALE = @import("./png/lib/grayscale.zig");
-const LIB_HEATMAP = @import("./png/lib/heatmap.zig");
+const Decompressor = @import("./png/decompressor.zig");
+const Grayscale = @import("./png/lib/grayscale.zig");
+const Heatmap = @import("./png/lib/heatmap.zig");
 
 pub fn main() !void {
 	var allocator = std.heap.page_allocator;
@@ -35,16 +35,19 @@ pub fn main() !void {
     var square: u16 = 10;
     var path_string: []u8 = &[_]u8{}; // empty fallback
     if (res.args.help != 0) {
-        std.debug.print("Help of Triarch.\n\n", .{});
+        std.debug.print("Help for Triarch-Png-Decompressor.\n\n", .{});
         std.debug.print("-h, --help             Display this help and exit.\n", .{});
         std.debug.print("-p, --path <FILE>      Input Path for the png to decompress. (required)\n", .{});
         std.debug.print("-s, --square <INT>     The size of the square within png. (def: 10)\n", .{});
         std.debug.print("-v, --verbose <INT>    Prints process of decompression. (level 1-4)\n", .{});
-        std.debug.print("-i, --invert <INT>    Invert the png. 0 means no, 1 means invert. (0 / 1) (def: 0)\n\n", .{});
+        std.debug.print("-i, --invert <INT>     Invert the png. 0 means no, 1 means invert. (0 / 1) (def: 0)\n\n", .{});
         return;
     }
     if (res.args.path) |p| {
-        path_string = try allocator.alloc(u8, p.len);
+        path_string = allocator.alloc(u8, p.len) catch |err| {
+            std.debug.print("{any}\n", .{err});
+            @panic("Allocation failed.");
+        };
         std.mem.copyForwards(u8, path_string, p);
     }
     if (res.args.verbose) |v|
@@ -63,23 +66,38 @@ pub fn main() !void {
 
 
     // INIT PNG DECOMPRESSION + GRAYSCALE
-	const decompressed = try decompress.decompress_png(&allocator, path_string);
+	const decompressed = Decompressor.decompressPng(allocator, path_string)  catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Decompressing png failed.");
+    };
     defer decompressed.hex_dump.deinit();
     defer decompressed.pixels.deinit();
 
+    if(decompressed.png.IHDR.width < square or decompressed.png.IHDR.height < square) {
+        std.debug.print("Square size cannot be larger than width or height!", .{});
+        @panic("Invalid square num");
+    }
+
+
     // INIT GRAY SCALING
-	const gray_scaled = try LIB_GRAYSCALE.get_grayscale(&allocator, decompressed.pixels.items, true);
+	const gray_scaled = Grayscale.getGrayscale(allocator, decompressed.pixels.items, true) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Grayscaling failed.");
+    };
     defer gray_scaled.deinit();
 
     // INIT HEATMAP
-    const heatmap = try LIB_HEATMAP.get_heatmap(
-        &allocator, 
+    const heatmap = Heatmap.getHeatmap(
+        allocator, 
         &decompressed.png, 
         gray_scaled.items, 
         invert == 0,
         square,
         square
-    );
+    ) catch |err| {
+        std.debug.print("{any}\n", .{err});
+        @panic("Heatmapping failed.");
+    };
     defer heatmap.deinit();
 
     std.debug.print("DRAWING NUMBER:\n", .{});

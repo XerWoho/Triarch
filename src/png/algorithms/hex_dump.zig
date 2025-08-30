@@ -1,9 +1,9 @@
 const std = @import("std");
 
-const LIB_HEX = @import("../lib/hex.zig");
-const LIB_STRING = @import("../lib/string.zig");
+const Hex = @import("../lib/hex.zig");
+const String = @import("../lib/string.zig");
 
-fn file_exists( fn_dir:std.fs.Dir, fn_file_name:[]const u8) !bool {
+fn fileExists( fn_dir:std.fs.Dir, fn_file_name:[]const u8) !bool {
     fn_dir.access(fn_file_name, .{.mode = .read_write}) catch |err| switch (err) {
         error.FileNotFound => return false,
         error.PermissionDenied => return false,
@@ -20,9 +20,9 @@ pub const Error = error{
     FileNotFound,
 };
 
-pub fn get_hex_dump(allocator: *std.mem.Allocator, file_path: []u8) !std.ArrayList(u8) {
+pub fn getHexDump(allocator: std.mem.Allocator, file_path: []u8) !std.ArrayList(u8) {
     const dir = std.fs.cwd();
-    const access = try file_exists(dir, file_path);
+    const access = try fileExists(dir, file_path);
     if(!access) {
         return Error.FileNotFound;
     }
@@ -34,20 +34,20 @@ pub fn get_hex_dump(allocator: *std.mem.Allocator, file_path: []u8) !std.ArrayLi
     var in_stream = buf_reader.reader();
 
     var buf: [4096]u8 = undefined;
-    var img_string = std.ArrayList(u8).init(allocator.*);
+    var img_string = std.ArrayList(u8).init(allocator);
     defer img_string.deinit();
     while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
         try img_string.appendSlice(line);
         try img_string.appendSlice("\n");
     }
 
-    const hex_dump = try LIB_HEX.hex_dump(allocator, img_string.items, false);
-    defer hex_dump.deinit();
-    var hex_dumps = std.ArrayList(u8).init(allocator.*);
-    for (hex_dump.items) |d| {
-        try hex_dumps.appendSlice(d);
+    const hexDump = try Hex.hexDump(allocator, img_string.items, false);
+    defer hexDump.deinit();
+    var hexDumps = std.ArrayList(u8).init(allocator);
+    for (hexDump.items) |d| {
+        try hexDumps.appendSlice(d);
     }
 
-    const converted_binary = try LIB_STRING.remove_whitespace(allocator, hex_dumps.items);
+    const converted_binary = try String.removeWhitespace(allocator, hexDumps.items);
     return converted_binary;
 }

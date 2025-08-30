@@ -1,8 +1,17 @@
 const std = @import("std");
-const TYPE_LAYER = @import("./layer.zig");
+const LayerTypes = @import("./layer.zig");
 
 
-pub const Network = struct {
-    input_layer: TYPE_LAYER.InputLayer,
-    neural_layers: []TYPE_LAYER.Layer,
+pub const NetworkStruct = struct {
+    input_layer: LayerTypes.InputLayerStruct,
+    neural_layers: []LayerTypes.LayerStruct,
+};
+
+
+
+pub const DumpNeuronDataStruct = struct {
+	bias: f32,
+	weights: []f32,
+	neuron_index: u32,
+	layer_index: u32,
 };

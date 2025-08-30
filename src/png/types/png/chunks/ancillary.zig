@@ -1,8 +1,29 @@
 const std = @import("std");
 const conversions = @import("../../../lib/conversions.zig");
 
+pub const AStruct = struct {
+    bkgd: bKGD,
+    chrm: cHRM,
+    cicp: cICP,
+    dsig: dSIG,
+    exif: eXIf,
+    gama: gAMA,
+    hist: hIST,
+    iccp: iCCP,
+    itxt: iTXt,
+    phys: pHYs,
+    sbit: sBIT,
+    splt: sPLT,
+    srgb: sRGB,
+    ster: sTER,
+    text: tEXt,
+    time: tIME,
+    trns: tRNS,
+    ztxt: zTXt
+};
+
+
 pub const bKGD = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -12,7 +33,6 @@ pub const bKGD = struct {
 };
 
 pub const cHRM = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -22,7 +42,6 @@ pub const cHRM = struct {
 };
 
 pub const cICP = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -32,7 +51,6 @@ pub const cICP = struct {
 };
 
 pub const dSIG = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -41,8 +59,9 @@ pub const dSIG = struct {
     }
 };
 
+
+
 pub const eXIf = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -52,7 +71,6 @@ pub const eXIf = struct {
 };
 
 pub const gAMA = struct {
-    sig: 1732332865,
     size: u16,
     crc: u16,
     value: u32,
@@ -66,7 +84,6 @@ pub const gAMA = struct {
 };
 
 pub const hIST = struct {
-    sig: 0,
     size: u16,
     crc: u16,
 
@@ -76,7 +93,6 @@ pub const hIST = struct {
 };
 
 pub const iCCP = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: iCCP) u64 {
@@ -85,7 +101,6 @@ pub const iCCP = struct {
 };
 
 pub const iTXt = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: iTXt) u64 {
@@ -94,7 +109,6 @@ pub const iTXt = struct {
 };
 
 pub const pHYs = struct {
-    sig: 1883789683,
     size: u16,
     crc: u16,
     pixels_per_unit_x: u32,
@@ -106,7 +120,6 @@ pub const pHYs = struct {
 };
 
 pub const sBIT = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: sBIT) u64 {
@@ -115,7 +128,6 @@ pub const sBIT = struct {
 };
 
 pub const sPLT = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: sPLT) u64 {
@@ -124,7 +136,6 @@ pub const sPLT = struct {
 };
 
 pub const sRGB = struct {
-    sig: 1934772034,
     size: u16,
     crc: u16,
     rendering_intent: u8,
@@ -134,7 +145,6 @@ pub const sRGB = struct {
 };
 
 pub const sTER = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: sTER) u64 {
@@ -143,7 +153,6 @@ pub const sTER = struct {
 };
 
 pub const tEXt = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: tEXt) u64 {
@@ -152,7 +161,6 @@ pub const tEXt = struct {
 };
 
 pub const tIME = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: tIME) u64 {
@@ -161,7 +169,6 @@ pub const tIME = struct {
 };
 
 pub const tRNS = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: tRNS) u64 {
@@ -170,7 +177,6 @@ pub const tRNS = struct {
 };
 
 pub const zTXt = struct {
-    sig: 0,
     size: u16,
     crc: u16,
     fn get_sig(self: zTXt) u64 {

@@ -1,14 +1,14 @@
 const std = @import("std");
 
-pub const Input = struct {
+pub const InputStruct = struct {
 	activation: f32
 };
-pub const InputLayer = struct {
-    inputs: []Input,
+pub const InputLayerStruct = struct {
+    inputs: []InputStruct,
 };
 
 
-pub const Neuron = struct {
+pub const NeuronStruct = struct {
     activation: f32,
     bias: f32,
 	connection_weights: []f32,
@@ -16,6 +16,6 @@ pub const Neuron = struct {
     suggested_nudges: std.ArrayList(f32)
 };
 
-pub const Layer = struct {
-    neurons: []Neuron,
+pub const LayerStruct = struct {
+    neurons: []NeuronStruct,
 };

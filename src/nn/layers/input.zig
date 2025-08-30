@@ -1,17 +1,20 @@
 const std = @import("std");
-const TYPES_LAYER = @import("../types/layer.zig");
+const LayerTypes = @import("../types/layer.zig");
 
-pub fn input_layer(allocator: *std.mem.Allocator, amount: u32) !TYPES_LAYER.InputLayer {
-	var input_layers = std.ArrayList(TYPES_LAYER.Input).init(allocator.*);
+pub fn createInputLayer(allocator: std.mem.Allocator, amount: u32) !LayerTypes.InputLayerStruct {
+	var input_layers = std.ArrayList(LayerTypes.InputStruct).init(allocator);
 	for(0..amount) |_| {
-		const input = TYPES_LAYER.Input{
+		const input = LayerTypes.InputStruct{
 			.activation = 0,
 		};
-		try input_layers.append(input);
+		input_layers.append(input)  catch |err| {
+			std.debug.print("{any}\n", .{err});
+			@panic("Appending failed.");
+		};
 	}
 
 	
-	return TYPES_LAYER.InputLayer{
+	return LayerTypes.InputLayerStruct{
 		.inputs = input_layers.items
 	};
 }

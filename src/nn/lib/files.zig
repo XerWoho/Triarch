@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn get_files_from_dir(allocator: std.mem.Allocator, path: []const u8) ![][]const u8 {
+pub fn getFilesFromDir(allocator: std.mem.Allocator, path: []const u8) ![][]const u8 {
     var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
     defer dir.close();
 
@@ -11,7 +11,10 @@ pub fn get_files_from_dir(allocator: std.mem.Allocator, path: []const u8) ![][]c
         if (entry.kind == .file) {
             // Copy the file name into allocator memory
             const name_copy = try allocator.dupe(u8, entry.name);
-            try files.append(name_copy);
+            files.append(name_copy) catch |err| {
+				std.debug.print("{any}\n", .{err});
+				@panic("Appending failed.");
+			};
         }
     }
     return try files.toOwnedSlice();

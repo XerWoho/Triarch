@@ -1,29 +1,47 @@
 const std = @import("std");
 
-const TYPES_LAYER = @import("../types/layer.zig");
+const LayerTypes = @import("../types/layer.zig");
+const NetworkTypes = @import("../types/network.zig");
 
-const RANDOM = @import("../lib/random.zig");
+const Random = @import("../lib/random.zig");
 
-pub fn output_layer(allocator: *std.mem.Allocator, size: u32, prev_size: u32) !TYPES_LAYER.Layer {
-	var output_layers = std.ArrayList(TYPES_LAYER.Neuron).init(allocator.*);
+pub fn output_layer(
+	allocator: std.mem.Allocator, 
+	size: u32, 
+	prev_size: u32,
+	dumped_neurons: ?[]NetworkTypes.DumpNeuronDataStruct
+) !LayerTypes.LayerStruct {
+	var output_layers = std.ArrayList(LayerTypes.NeuronStruct).init(allocator);
 
-	for(0..size) |_| {
-		var connection_weights = std.ArrayList(f32).init(allocator.*);
-		for(0..prev_size) |_| {
-			try connection_weights.append(RANDOM.random_weight());
+	for(0..size) |index| {
+		var connection_weights = std.ArrayList(f32).init(allocator);
+		for(0..prev_size) |w_index| {
+			var w: f32 = Random.randomWeight();
+			if(dumped_neurons != null) w = dumped_neurons.?[index].weights[w_index];
+
+			connection_weights.append(w) catch |err| {
+				std.debug.print("{any}\n", .{err});
+				@panic("Appending failed.");
+			};
 		}
 
-		const neuron = TYPES_LAYER.Neuron{
+
+		var b: f32 = Random.randomBias();
+		if(dumped_neurons != null) b = dumped_neurons.?[index].bias;
+		const neuron = LayerTypes.NeuronStruct{
 			.activation = 0,
-			.bias = RANDOM.random_bias(),
+			.bias = b,
 			.connection_weights = connection_weights.items,
 			.delta = 0,
-			.suggested_nudges = std.ArrayList(f32).init(allocator.*)
+			.suggested_nudges = std.ArrayList(f32).init(allocator)
 		};
-		try output_layers.append(neuron);
+		output_layers.append(neuron) catch |err| {
+			std.debug.print("{any}\n", .{err});
+			@panic("Appending failed.");
+		};
 	}
 
-	return TYPES_LAYER.Layer{
+	return LayerTypes.LayerStruct{
 		.neurons = output_layers.items,
 	};
 }
