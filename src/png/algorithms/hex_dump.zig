@@ -41,13 +41,17 @@ pub fn getHexDump(allocator: std.mem.Allocator, file_path: []u8) !std.ArrayList(
         try img_string.appendSlice("\n");
     }
 
-    const hexDump = try Hex.hexDump(allocator, img_string.items, false);
-    defer hexDump.deinit();
-    var hexDumps = std.ArrayList(u8).init(allocator);
-    for (hexDump.items) |d| {
-        try hexDumps.appendSlice(d);
+    const hex_dump = try Hex.hexDump(allocator, img_string.items, false);
+    defer hex_dump.deinit();
+    defer for(hex_dump.items) |dump| {
+        allocator.free(dump);
+    };
+    var hex_dumps = std.ArrayList(u8).init(allocator);
+    for (hex_dump.items) |dump| {
+        try hex_dumps.appendSlice(dump);
     }
+    defer hex_dumps.deinit();
 
-    const converted_binary = try String.removeWhitespace(allocator, hexDumps.items);
+    const converted_binary = try String.removeWhitespace(allocator, hex_dumps.items);
     return converted_binary;
 }

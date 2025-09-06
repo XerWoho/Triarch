@@ -9,15 +9,15 @@ pub fn outputDerivedActivation(x: f32) f32 {
 }
 
 pub fn hiddenActivation(x: f32) f32 {
-    return sigmoid(x);
+    return relu(x);
 }
 
 pub fn hiddenDerivedActivation(x: f32) f32 {
-    return sigmoidDerivative(x);
+    return reluDerivative(x);
 }
 
 
-fn sigmoid(x: f32) f32 {
+pub fn sigmoid(x: f32) f32 {
     return 1.0 / (1.0 + @exp(-x));
 }
 
@@ -33,15 +33,15 @@ fn sigmoidDerivative(x: f32) f32 {
 //     return tanh(x) * tanh(x);
 // }
 
-// fn relu(x: f32) f32 {
-//     return @max(0.0, x);
-// }
+fn relu(x: f32) f32 {
+    return @max(0.0, x);
+}
 
-// fn reluDerivative(x: f32) f32 {
-//     if(x >= 0) return 1.0;
-//     if(x < 0) return 0.0;
-//     return 0.0;
-// }
+fn reluDerivative(x: f32) f32 {
+    if(x >= 0) return 1.0;
+    if(x < 0) return 0.0;
+    return 0.0;
+}
 
 // fn leakyRelu(x: f32) f32 {
 //     return @max(0.1 * x, x);

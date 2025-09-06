@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn getFilesFromDir(allocator: std.mem.Allocator, path: []const u8) ![][]const u8 {
+pub fn getFilesFromDir(allocator: std.mem.Allocator, path: []const u8) !std.ArrayList([]const u8) {
     var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
     defer dir.close();
 
@@ -17,5 +17,5 @@ pub fn getFilesFromDir(allocator: std.mem.Allocator, path: []const u8) ![][]cons
 			};
         }
     }
-    return try files.toOwnedSlice();
+    return files;
 }

@@ -14,27 +14,29 @@ const PixelTypes = @import("./types/pixels.zig");
 
 const DecompressedPngStruct = struct {
     png: PngTypes.PNGStruct,
-    hex_dump: std.ArrayList(u8),
     pixels: std.ArrayList(PixelTypes.PixelStruct),
 };
 
 pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !DecompressedPngStruct {
-    const allocated_hexDump = HexDump.getHexDump(allocator, path_string) catch |err| {
+    const allocated_hex_dump = HexDump.getHexDump(allocator, path_string) catch |err| {
         std.debug.print("Error: {s}\n", .{@errorName(err)});
         std.process.exit(0);
     };
+    defer allocated_hex_dump.deinit();
 
     // INIT PNG
-    var png = Png.getPng(allocator, allocated_hexDump.items) catch |err| {
+    var png = Png.getPng(allocator, allocated_hex_dump.items) catch |err| {
         std.debug.print("{any}\n", .{err});
         @panic("Getting PNG data failed.");
     };
+    defer png.IDAT.deinit();
+
     // CONVERT PNG DATA
     var data = std.ArrayList(u8).init(allocator);
-    for (0..png.IDAT.len) |i| {
-        const idat = png.IDAT[i];
+    for (png.IDAT.items) |idat| {
         try data.appendSlice(idat.data);
     }
+
     defer data.deinit();
     const binary_hex = Conversions.hexToBinary(allocator, data.items, true) catch |err| {
         std.debug.print("{any}\n", .{err});
@@ -57,7 +59,6 @@ pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !Decompres
     
     return DecompressedPngStruct{
         .png = png,
-        .hex_dump = allocated_hexDump,
         .pixels = pixel_data,
     };
 }

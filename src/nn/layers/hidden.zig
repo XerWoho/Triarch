@@ -14,10 +14,12 @@ pub fn createHiddenLayer(
 
 	for(0..size) |index| {
 		var connection_weights = std.ArrayList(f32).init(allocator);
+		var weights_velocity = std.ArrayList(f32).init(allocator);
 		for(0..prev_size) |w_index| {
 			var w: f32 = Random.randomWeight();
 			if(dumped_neurons != null) w = dumped_neurons.?[index].weights[w_index];
-
+			
+			try weights_velocity.append(0);
 			connection_weights.append(w) catch |err| {
 				std.debug.print("{any}\n", .{err});
 				@panic("Appending failed.");
@@ -31,9 +33,12 @@ pub fn createHiddenLayer(
 		const neuron = LayerTypes.NeuronStruct{
 			.activation = 0,
 			.bias = b,
-			.connection_weights = connection_weights.items,
+			.connection_weights = connection_weights,
+			.suggested_nudges = std.ArrayList(f32).init(allocator),
 			.delta = 0,
-			.suggested_nudges = std.ArrayList(f32).init(allocator)
+
+			.weights_velocity = weights_velocity,
+			.bias_velocity = 0
 		};
 		hidden_layers.append(neuron) catch |err| {
 			std.debug.print("{any}\n", .{err});
@@ -42,6 +47,6 @@ pub fn createHiddenLayer(
 	}
 
 	return LayerTypes.LayerStruct{
-		.neurons = hidden_layers.items,
+		.neurons = hidden_layers,
 	};
 }

@@ -100,7 +100,7 @@ pub fn setInputActivations(nn: *NetworkTypes.NetworkStruct, activation_inputs: [
 
 	for(0..activation_inputs.len) |i| {
 		const activation = activation_inputs[i];
-		input_layer.inputs[i].activation = activation; // set the activation value of the corresponding neuron
+		input_layer.inputs.items[i].activation = activation; // set the activation value of the corresponding neuron
 	}
 
 	return;

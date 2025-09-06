@@ -15,6 +15,6 @@ pub fn createInputLayer(allocator: std.mem.Allocator, amount: u32) !LayerTypes.I
 
 	
 	return LayerTypes.InputLayerStruct{
-		.inputs = input_layers.items
+		.inputs = input_layers
 	};
 }

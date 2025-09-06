@@ -66,6 +66,7 @@ pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.Arra
 
         const VALUE = Constants.HEX_VALUES[KEY_INDEX.?];
         const converted_value = try std.fmt.allocPrint(allocator, "{s}", .{VALUE});
+        defer allocator.free(converted_value);
         try byte.appendSlice(converted_value);
 
         if (index % 2 != 0) {
@@ -103,6 +104,7 @@ pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligned(u
             try return_string.insertSlice(0, Constants.HEX_LETTERS[remainder - 10]);
         } else {
             const int_to_num = try std.fmt.allocPrint(allocator, "{d}", .{remainder});
+            defer allocator.free(int_to_num);
             try return_string.insertSlice(0, int_to_num);
         }
 
@@ -136,6 +138,7 @@ pub fn binaryToHex(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAlig
 // to INT
 pub fn hexToInt(allocator: std.mem.Allocator, byte: []u8, return_type: type) !return_type {
     const hex = try std.fmt.allocPrint(allocator, "0x{s}", .{byte});
+    defer allocator.free(hex);
     const int: u32 = try std.fmt.parseInt(u32, hex, 0);
 
     const final_int: return_type = @truncate(int);

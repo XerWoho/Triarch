@@ -28,7 +28,7 @@ pub fn getPng(allocator: std.mem.Allocator, binary: []u8) !PngTypes.PNGStruct {
     while (!std.mem.eql(u8, binary[current_bit_position + Constants.BYTE_LENGTH .. current_bit_position + Constants.BYTE_LENGTH * 2], Constants.IEND_SIG)) {
         try getIdat(allocator, binary, &current_bit_position, &IDAT_CHUNKS, @intCast(IDAT_CHUNKS.items.len));
     }
-    png.IDAT = IDAT_CHUNKS.items;
+    png.IDAT = IDAT_CHUNKS;
 
     return png;
 }
@@ -228,7 +228,7 @@ fn getIdat(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, idat_chunks: *
 
     // validate the zlib header
     const validation_value_hex = try std.fmt.allocPrint(allocator, "{s}{s}", .{ deflate_compression, zlib_fcheck_value });
-
+    defer allocator.free(validation_value_hex);
     const validation_value = try Conversions.hexToInt(allocator, validation_value_hex, u16);
     if (validation_value % 31 != 0) {
         @panic("invalid zlib header!");

@@ -8,10 +8,10 @@ pub fn dumpWB(nn: NetworkTypes.NetworkStruct) !void {
 
 	for(0.., nn.neural_layers) |layer_index, layer| {
 		var data_layer = std.ArrayList(NetworkTypes.DumpNeuronDataStruct).init(allocator);
-		for(0.., layer.neurons) |neuron_index, neuron| {
+		for(0.., layer.neurons.items) |neuron_index, neuron| {
 			const data = NetworkTypes.DumpNeuronDataStruct{
 				.bias = neuron.bias,
-				.weights = neuron.connection_weights,
+				.weights = neuron.connection_weights.items,
 				.layer_index = @intCast(layer_index),
 				.neuron_index = @intCast(neuron_index)
 			};

@@ -10,7 +10,6 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 
 	// INIT PNG DECOMPRESSION + GRAYSCALE
 	const decompressed = try Decompressor.decompressPng(allocator, full_path);
-	defer decompressed.hex_dump.deinit();
 	defer decompressed.pixels.deinit();
 
 	// INIT GRAY SCALING

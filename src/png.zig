@@ -2,11 +2,10 @@ const std = @import("std");
 const clap = @import("clap");
 
 const Decompressor = @import("./png/decompressor.zig");
-const Grayscale = @import("./png/lib/grayscale.zig");
-const Heatmap = @import("./png/lib/heatmap.zig");
+const Draw = @import("./png/lib/draw.zig");
 
 pub fn main() !void {
-	var allocator = std.heap.page_allocator;
+    var allocator = std.heap.page_allocator;
 
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
@@ -70,7 +69,6 @@ pub fn main() !void {
         std.debug.print("{any}\n", .{err});
         @panic("Decompressing png failed.");
     };
-    defer decompressed.hex_dump.deinit();
     defer decompressed.pixels.deinit();
 
     if(decompressed.png.IHDR.width < square or decompressed.png.IHDR.height < square) {
@@ -78,40 +76,13 @@ pub fn main() !void {
         @panic("Invalid square num");
     }
 
-
-    // INIT GRAY SCALING
-	const gray_scaled = Grayscale.getGrayscale(allocator, decompressed.pixels.items, true) catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("Grayscaling failed.");
-    };
-    defer gray_scaled.deinit();
-
-    // INIT HEATMAP
-    const heatmap = Heatmap.getHeatmap(
+    try Draw.drawPng(
         allocator, 
-        &decompressed.png, 
-        gray_scaled.items, 
-        invert == 0,
-        square,
+        decompressed.png, 
+        decompressed.pixels.items, 
+        invert == 0, 
         square
-    ) catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("Heatmapping failed.");
-    };
-    defer heatmap.deinit();
-
-    std.debug.print("DRAWING NUMBER:\n", .{});
-    for(0..heatmap.items.len) |i| {
-        const row = heatmap.items[i];
-        for(0..row.len) |j| {
-            const x = row[j];
-            if(x > 0.6) std.debug.print("X ", .{})
-            else if(x > 0.1) std.debug.print("x ", .{})
-            else if(x > 0) std.debug.print(". ", .{})
-            else if(x == 0) std.debug.print("  ", .{});
-        }
-        std.debug.print("\n", .{});
-    }
+    );
 
 	return;
 }

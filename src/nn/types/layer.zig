@@ -4,18 +4,20 @@ pub const InputStruct = struct {
 	activation: f32
 };
 pub const InputLayerStruct = struct {
-    inputs: []InputStruct,
+    inputs: std.ArrayList(InputStruct),
 };
 
 
 pub const NeuronStruct = struct {
     activation: f32,
     bias: f32,
-	connection_weights: []f32,
+	connection_weights: std.ArrayList(f32),
+	weights_velocity: std.ArrayList(f32),
+    suggested_nudges: std.ArrayList(f32),
     delta: f32,
-    suggested_nudges: std.ArrayList(f32)
+    bias_velocity: f32,
 };
 
 pub const LayerStruct = struct {
-    neurons: []NeuronStruct,
+    neurons: std.ArrayList(NeuronStruct),
 };
