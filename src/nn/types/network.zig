@@ -26,11 +26,11 @@ pub fn feedForward(self: *NeuralNetwork, inputs: []f32) !void {
 
 pub fn computeLoss(self: *NeuralNetwork, inputs: []f32, expected: []f32) !f32 {
     try self.feedForward(inputs);
-    const outputLayer = self.layers[self.layers.len - 1];
+    const output_layer = self.layers[self.layers.len - 1];
     var loss: f32 = 0;
 
-    for (0..outputLayer.activations.len) |nodeOut| {
-        loss += Layer.mse(outputLayer.activations[nodeOut], expected[nodeOut]);
+    for (0..output_layer.activations.len) |nodeOut| {
+        loss += Layer.mse(output_layer.activations[nodeOut], expected[nodeOut]);
     }
 
     return loss;
@@ -44,26 +44,26 @@ pub fn trainStep(self: *NeuralNetwork, inputs: []f32, expected: []f32, learnRate
 
 pub fn backpropagate(self: *NeuralNetwork, inputs: []f32, expected: []f32) !void {
     const previousLayer = self.layers[self.layers.len - 2];
-    var outputLayer = self.layers[self.layers.len - 1];
-    var deltaValues = try outputLayer.computeOutputDeltas(expected);
-    try outputLayer.accumulateGradients(previousLayer.activations, deltaValues);
+    var output_layer = self.layers[self.layers.len - 1];
+    var delta_values = try output_layer.computeOutputDeltas(expected);
+    try output_layer.accumulateGradients(previousLayer.activations, delta_values);
 
-    var lastHiddenlayerIndex = self.layers.len - 2;
+    var last_hidden_layer_index = self.layers.len - 2;
     while(true) {
-        var nextLayer = self.layers[lastHiddenlayerIndex + 1];
-        var hiddenLayer = self.layers[lastHiddenlayerIndex];
-        deltaValues = try hiddenLayer.computeHiddenDeltas(
-            &nextLayer,
-            deltaValues,
+        var next_layer = self.layers[last_hidden_layer_index + 1];
+        var hidden_layer = self.layers[last_hidden_layer_index];
+        delta_values = try hidden_layer.computeHiddenDeltas(
+            &next_layer,
+            delta_values,
         );
 
-        if(lastHiddenlayerIndex == 0) {
-            try hiddenLayer.accumulateGradients(inputs, deltaValues);
+        if(last_hidden_layer_index == 0) {
+            try hidden_layer.accumulateGradients(inputs, delta_values);
             break;
-        } 
+        }
 
-        try hiddenLayer.accumulateGradients(self.layers[lastHiddenlayerIndex - 1].activations, deltaValues);
-        lastHiddenlayerIndex -= 1;
+        try hidden_layer.accumulateGradients(self.layers[last_hidden_layer_index - 1].activations, delta_values);
+        last_hidden_layer_index -= 1;
     }
 }
 

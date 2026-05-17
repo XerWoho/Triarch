@@ -35,54 +35,54 @@ weights: Matrix,
 biases: []f32,
 
 activations: []f32,
-zValues: []f32,
-deltaValues: []f32,
+z_values: []f32,
+delta_values: []f32,
 
-costGradientW: Matrix,
-costGradientB: []f32,
+cost_gradient_weights: Matrix,
+cost_gradient_biases: []f32,
 
-numNodesIn: usize,
-numNodesOut: usize,
+num_nodes_in: usize,
+num_nodes_out: usize,
 
-pub fn create(numNodesIn: usize, numNodesOut: usize) !Layer {
+pub fn create(num_nodes_in: usize, num_nodes_out: usize) !Layer {
     const allocator = std.heap.page_allocator;
 
-    const costGradientB = try allocator.alloc(f32, numNodesOut);
-    for (0..numNodesOut) |nO| {
-        costGradientB[nO] = 0;
+    const cost_gradient_biases = try allocator.alloc(f32, num_nodes_out);
+    for (0..num_nodes_out) |nodes_out_index| {
+        cost_gradient_biases[nodes_out_index] = 0;
     }
 
-    var costGradientW = try Matrix.init(allocator, numNodesIn, numNodesOut);
-    for (0..numNodesIn) |nI| {
-        for (0..numNodesOut) |nO| {
-            costGradientW.updateValueAt(nI, nO, 0);
+    var cost_gradient_weights = try Matrix.init(allocator, num_nodes_in, num_nodes_out);
+    for (0..num_nodes_in) |nodes_in_index| {
+        for (0..num_nodes_out) |nodes_out_index| {
+            cost_gradient_weights.updateValueAt(nodes_in_index, nodes_out_index, 0);
         }
     }
 
-    const biases = try allocator.alloc(f32, numNodesOut);
+    const biases = try allocator.alloc(f32, num_nodes_out);
     for (biases) |*b| {
         b.* = 0;
     }
 
-    var weights = try Matrix.init(allocator, numNodesIn, numNodesOut);
-    for (0..numNodesIn) |nI| {
-        for (0..numNodesOut) |nO| {
-            weights.updateValueAt(nI, nO, randomValue());
+    var weights = try Matrix.init(allocator, num_nodes_in, num_nodes_out);
+    for (0..num_nodes_in) |nodes_in_index| {
+        for (0..num_nodes_out) |nodes_out_index| {
+            weights.updateValueAt(nodes_in_index, nodes_out_index, randomValue());
         }
     }
 
-    const activations = try allocator.alloc(f32, numNodesOut);
+    const activations = try allocator.alloc(f32, num_nodes_out);
     for (activations) |*a| {
         a.* = 0;
     }
 
-    const zValues = try allocator.alloc(f32, numNodesOut);
-    for (zValues) |*ra| {
+    const z_values = try allocator.alloc(f32, num_nodes_out);
+    for (z_values) |*ra| {
         ra.* = 0;
     }
 
-    const deltaValues = try allocator.alloc(f32, numNodesOut);
-    for (deltaValues) |*n| {
+    const delta_values = try allocator.alloc(f32, num_nodes_out);
+    for (delta_values) |*n| {
         n.* = 0;
     }
 
@@ -91,25 +91,25 @@ pub fn create(numNodesIn: usize, numNodesOut: usize) !Layer {
         .biases = biases,
 
         .activations = activations,
-        .zValues = zValues,
-        .deltaValues = deltaValues,
+        .z_values = z_values,
+        .delta_values = delta_values,
 
-        .costGradientW = costGradientW,
-        .costGradientB = costGradientB,
+        .cost_gradient_weights = cost_gradient_weights,
+        .cost_gradient_biases = cost_gradient_biases,
 
-        .numNodesIn = numNodesIn,
-        .numNodesOut = numNodesOut,
+        .num_nodes_in = num_nodes_in,
+        .num_nodes_out = num_nodes_out,
     };
 }
 
 pub fn feedForward(self: *Layer, inputs: []f32) ![]f32 {
-    for (0..self.numNodesOut) |nodeOut| {
+    for (0..self.num_nodes_out) |nodeOut| {
         var activation = self.biases[nodeOut];
-        for (0..self.numNodesIn) |nodeIn| {
+        for (0..self.num_nodes_in) |nodeIn| {
             activation += inputs[nodeIn] * self.weights.at(nodeIn, nodeOut);
         }
 
-        self.zValues[nodeOut] = activation;
+        self.z_values[nodeOut] = activation;
         self.activations[nodeOut] = sigmoid(activation);
     }
 
@@ -118,73 +118,73 @@ pub fn feedForward(self: *Layer, inputs: []f32) ![]f32 {
 
 pub fn computeOutputDeltas(self: *Layer, expected: []f32) ![]f32 {
     const allocator = std.heap.page_allocator;
-    var deltaValues: []f32 = try allocator.alloc(f32, expected.len);
-    for (0..deltaValues.len) |i| {
-        const costDerivative = mseDerivative(self.activations[i], expected[i]);
-        const activationDerivative = sigmoidDerivative(self.zValues[i]);
-        deltaValues[i] = costDerivative * activationDerivative;
+    var delta_values: []f32 = try allocator.alloc(f32, expected.len);
+    for (0..delta_values.len) |i| {
+        const cost_derivative = mseDerivative(self.activations[i], expected[i]);
+        const activation_derivative = sigmoidDerivative(self.z_values[i]);
+        delta_values[i] = cost_derivative * activation_derivative;
     }
 
-    return deltaValues;
+    return delta_values;
 }
 
-pub fn computeHiddenDeltas(self: *Layer, nextLayer: *Layer, nextDeltaValues: []f32) ![]f32 {
+pub fn computeHiddenDeltas(self: *Layer, next_layer: *Layer, next_delta_values: []f32) ![]f32 {
     const allocator = std.heap.page_allocator;
 
-    var deltaValues: []f32 = try allocator.alloc(f32, self.numNodesOut);
+    var delta_values: []f32 = try allocator.alloc(f32, self.num_nodes_out);
 
-    for (0..deltaValues.len) |deltaValueIndex| {
-        var deltaValue: f32 = 0;
-        for (0..nextDeltaValues.len) |nextDeltaValueIndex| {
-            const weightedInputDerivative = nextLayer.weights.at(deltaValueIndex, nextDeltaValueIndex);
-            deltaValue += weightedInputDerivative * nextDeltaValues[nextDeltaValueIndex];
+    for (0..delta_values.len) |delta_value_index| {
+        var delta_value: f32 = 0;
+        for (0..next_delta_values.len) |next_delta_value_index| {
+            const weighted_input_derivative = next_layer.weights.at(delta_value_index, next_delta_value_index);
+            delta_value += weighted_input_derivative * next_delta_values[next_delta_value_index];
         }
 
-        deltaValue *= sigmoidDerivative(self.zValues[deltaValueIndex]);
-        deltaValues[deltaValueIndex] = deltaValue;
+        delta_value *= sigmoidDerivative(self.z_values[delta_value_index]);
+        delta_values[delta_value_index] = delta_value;
     }
 
-    return deltaValues;
+    return delta_values;
 }
 
-pub fn accumulateGradients(self: *Layer, inputs: []f32, deltaValues: []f32) !void {
-    for (0..self.numNodesOut) |nodeOut| {
-        for (0..self.numNodesIn) |nodeIn| {
-            const derivedCostWeight = inputs[nodeIn] * deltaValues[nodeOut];
-            const cw = self.costGradientW.at(nodeIn, nodeOut);
-            self.costGradientW.updateValueAt(nodeIn, nodeOut, cw + derivedCostWeight);
+pub fn accumulateGradients(self: *Layer, inputs: []f32, delta_values: []f32) !void {
+    for (0..self.num_nodes_out) |nodeOut| {
+        for (0..self.num_nodes_in) |nodeIn| {
+            const derived_cost_weight = inputs[nodeIn] * delta_values[nodeOut];
+            const cw = self.cost_gradient_weights.at(nodeIn, nodeOut);
+            self.cost_gradient_weights.updateValueAt(nodeIn, nodeOut, cw + derived_cost_weight);
         }
 
-        const derivedCostBias = 1 * deltaValues[nodeOut];
-        self.costGradientB[nodeOut] += derivedCostBias;
+        const derivedCostBias = 1 * delta_values[nodeOut];
+        self.cost_gradient_biases[nodeOut] += derivedCostBias;
     }
 }
 
 pub fn applyGradients(self: *Layer, learnRate: f32) !void {
-    for (0..self.numNodesOut) |nodeOut| {
-        self.biases[nodeOut] -= self.costGradientB[nodeOut] * learnRate;
-        for (0..self.numNodesIn) |nodeIn| {
+    for (0..self.num_nodes_out) |nodeOut| {
+        self.biases[nodeOut] -= self.cost_gradient_biases[nodeOut] * learnRate;
+        for (0..self.num_nodes_in) |nodeIn| {
             const w = self.weights.at(nodeIn, nodeOut);
-            const cw = self.costGradientW.at(nodeIn, nodeOut);
+            const cw = self.cost_gradient_weights.at(nodeIn, nodeOut);
             self.weights.updateValueAt(nodeIn, nodeOut, w - cw * learnRate);
         }
     }
 }
 
 pub fn clearGradients(self: *Layer) !void {
-    for (0..self.numNodesOut) |nodeOut| {
-        self.costGradientB[nodeOut] = 0;
-        for (0..self.numNodesIn) |nodeIn| {
-            self.costGradientW.updateValueAt(nodeIn, nodeOut, 0);
+    for (0..self.num_nodes_out) |nodeOut| {
+        self.cost_gradient_biases[nodeOut] = 0;
+        for (0..self.num_nodes_in) |nodeIn| {
+            self.cost_gradient_weights.updateValueAt(nodeIn, nodeOut, 0);
         }
     }
 }
 
-pub fn mse(outputActivation: f32, expectedOutput: f32) f32 {
-    const _error = outputActivation - expectedOutput;
+pub fn mse(output_activation: f32, expected_output: f32) f32 {
+    const _error = output_activation - expected_output;
     return _error * _error;
 }
 
-pub fn mseDerivative(outputActivation: f32, expectedOutput: f32) f32 {
-    return 2 * (outputActivation - expectedOutput);
+pub fn mseDerivative(output_activation: f32, expected_output: f32) f32 {
+    return 2 * (output_activation - expected_output);
 }
