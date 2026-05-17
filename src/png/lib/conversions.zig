@@ -150,7 +150,7 @@ pub fn binaryToInt(bytes: []u8, lsb: bool, return_type: type) !return_type {
 
     var b = bytes;
     var buf: [Constants.BYTE_LENGTH * 2]u8 = undefined;
-    if(lsb) {
+    if (lsb) {
         b = try String.reverseStringNoAlloc(bytes, &buf);
     }
 

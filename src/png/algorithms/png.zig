@@ -147,11 +147,11 @@ fn getAncillary(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: 
         const ancillary_header_size = try Conversions.hexToInt(allocator, ancillary_header_size_slice, u32);
         current_bit_position += Constants.BYTE_LENGTH;
 
-        const ancillary_header_slice = binary[current_bit_position..current_bit_position + Constants.BYTE_LENGTH];
+        const ancillary_header_slice = binary[current_bit_position .. current_bit_position + Constants.BYTE_LENGTH];
         _ = ancillary_header_slice;
         current_bit_position += Constants.BYTE_LENGTH;
 
-        const ancillary_header_data = binary[current_bit_position..current_bit_position + 2 * ancillary_header_size];
+        const ancillary_header_data = binary[current_bit_position .. current_bit_position + 2 * ancillary_header_size];
         _ = ancillary_header_data;
         current_bit_position += 2 * ancillary_header_size;
         // std.debug.print("{s}\n", .{ancillary_header_data});
@@ -167,11 +167,10 @@ fn getAncillary(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: 
         //     const gama_value = try Conversions.hexToInt(allocator, ancillary_header_data, u32);
         // }
 
-        const ancillary_header_crc = binary[current_bit_position..current_bit_position + Constants.BYTE_LENGTH];
+        const ancillary_header_crc = binary[current_bit_position .. current_bit_position + Constants.BYTE_LENGTH];
         _ = ancillary_header_crc;
         current_bit_position += Constants.BYTE_LENGTH;
     }
-
 
     cbp.* = current_bit_position;
 }
@@ -179,7 +178,6 @@ fn getAncillary(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: 
 fn getIdat(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, idat_chunks: *std.ArrayList(CriticalChunkTypes.IDATStruct), idat_index: u16) !void {
     var IDAT: CriticalChunkTypes.IDATStruct = CriticalChunkTypes.IDATStruct{ .compression_info = 0, .compression_method = 0, .crc = &[_]u8{}, .data = &[_]u8{}, .size = 0, .adler_zlib_checksum = 0, .zlib_fcheck_value = 0 };
     var current_bit_position = cbp.*;
-
 
     // INIT IDAT
     // get PNG IDAT size

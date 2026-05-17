@@ -6,7 +6,6 @@ const Constants = @import("../constants.zig");
 
 const HuffmanTypes = @import("../types/huffman.zig");
 
-
 const DistSymbolStruct = struct {
     symbol: u16,
     base_distance: u16,
@@ -64,87 +63,83 @@ fn getBlockSymbol(symbol: u16) !BlockSymbolStruct {
 }
 
 pub fn handleLzssStatic(
-	symbol: u16,
-	binary: []u8,
-
-	complete_blocks: *std.ArrayList(u8),
-	cbp: *u32,
+    symbol: u16,
+    binary: []u8,
+    complete_blocks: *std.ArrayList(u8),
+    cbp: *u32,
 ) !void {
-	var current_bit_position = cbp.*;
-	const block_symbol = try getBlockSymbol(symbol);
-	const block_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + block_symbol.extra_bits], true, u16);
-	current_bit_position += block_symbol.extra_bits;
-	const total_copies = block_symbol.base_length + block_extra_bits;
+    var current_bit_position = cbp.*;
+    const block_symbol = try getBlockSymbol(symbol);
+    const block_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + block_symbol.extra_bits], true, u16);
+    current_bit_position += block_symbol.extra_bits;
+    const total_copies = block_symbol.base_length + block_extra_bits;
 
+    const distance_symbol = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + 5], false, u8);
+    current_bit_position += 5;
+    const dist_symbol = try getDistSymbol(distance_symbol);
 
-	const distance_symbol = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + 5], false, u8);
-	current_bit_position += 5;
-	const dist_symbol = try getDistSymbol(distance_symbol);
+    const distance_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + dist_symbol.extra_bits], true, u16);
+    current_bit_position += dist_symbol.extra_bits;
+    const total_distance = dist_symbol.base_distance + distance_extra_bits;
 
+    if (complete_blocks.items.len < total_distance) {
+        std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ complete_blocks.items.len, total_distance });
+        @panic("TOTAL DISTANCE exceeds length");
+    }
 
-	const distance_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + dist_symbol.extra_bits], true, u16);
-	current_bit_position += dist_symbol.extra_bits;
-	const total_distance = dist_symbol.base_distance + distance_extra_bits;
+    for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
+        try complete_blocks.append(complete_blocks.items[i]);
+    }
 
-	if (complete_blocks.items.len < total_distance) {
-		std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ complete_blocks.items.len, total_distance });
-		@panic("TOTAL DISTANCE exceeds length");
-	}
-
-	for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
-		try complete_blocks.append(complete_blocks.items[i]);
-	}
-
-	cbp.* = current_bit_position;
+    cbp.* = current_bit_position;
 }
 
 pub fn handleLzssDynamic(
-	allocator: std.mem.Allocator,
-	symbol: u16,
-	binary: []u8,
-	hdist_huffman_codes: std.ArrayList(HuffmanTypes.CodeLengthSymbolsStruct),
-	complete_blocks: *std.ArrayList(u8),
-	cbp: *u32,
+    allocator: std.mem.Allocator,
+    symbol: u16,
+    binary: []u8,
+    hdist_huffman_codes: std.ArrayList(HuffmanTypes.CodeLengthSymbolsStruct),
+    complete_blocks: *std.ArrayList(u8),
+    cbp: *u32,
 ) !void {
-	var current_bit_position = cbp.*;
-	const block_symbol = try getBlockSymbol(symbol);
+    var current_bit_position = cbp.*;
+    const block_symbol = try getBlockSymbol(symbol);
 
-	const block_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + block_symbol.extra_bits], true, u16);
-	current_bit_position += block_symbol.extra_bits;
-	const total_copies = block_symbol.base_length + block_extra_bits;
+    const block_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + block_symbol.extra_bits], true, u16);
+    current_bit_position += block_symbol.extra_bits;
+    const total_copies = block_symbol.base_length + block_extra_bits;
 
+    var distance_symbol: ?u8 = null;
+    var distance_symbol_storer = std.ArrayList(u8).init(allocator);
+    while (current_bit_position < binary.len) {
+        try distance_symbol_storer.append(binary[current_bit_position] - Constants.INT_TO_ASCII_OFFSET);
+        current_bit_position += 1;
+        for (0..hdist_huffman_codes.items.len) |i| {
+            const hdist_huffman_code = hdist_huffman_codes.items[i];
+            if (std.mem.eql(u8, hdist_huffman_code.huffman_code, distance_symbol_storer.items)) {
+                distance_symbol = @intCast(hdist_huffman_code.symbol);
+                break;
+            }
+            continue;
+        }
+        if (distance_symbol == null) continue;
+        distance_symbol_storer.clearAndFree();
+        break;
+    }
+    const dist_symbol = try getDistSymbol(distance_symbol.?);
 
-	var distance_symbol: ?u8 = null;
-	var distance_symbol_storer = std.ArrayList(u8).init(allocator);
-	while(current_bit_position < binary.len) {
-		try distance_symbol_storer.append(binary[current_bit_position] - Constants.INT_TO_ASCII_OFFSET);
-		current_bit_position += 1;
-		for (0..hdist_huffman_codes.items.len) |i| {
-			const hdist_huffman_code = hdist_huffman_codes.items[i];
-			if (std.mem.eql(u8, hdist_huffman_code.huffman_code, distance_symbol_storer.items)) {
-				distance_symbol = @intCast(hdist_huffman_code.symbol);
-				break;
-			}
-			continue;
-		}
-		if (distance_symbol == null) continue;
-		distance_symbol_storer.clearAndFree();
-		break;
-	}
-	const dist_symbol = try getDistSymbol(distance_symbol.?);
+    const distance_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + dist_symbol.extra_bits], true, u16);
+    current_bit_position += dist_symbol.extra_bits;
 
-	const distance_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + dist_symbol.extra_bits], true, u16);
-	current_bit_position += dist_symbol.extra_bits;
+    const total_distance = dist_symbol.base_distance + distance_extra_bits;
+    if (complete_blocks.items.len < total_distance) {
+        std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ complete_blocks.items.len, total_distance });
+        @panic("TOTAL DISTANCE exceeds length");
+    }
 
-	const total_distance = dist_symbol.base_distance + distance_extra_bits;
-	if (complete_blocks.items.len < total_distance) {
-		std.debug.print("WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: {d} | TD: {d}\n", .{ complete_blocks.items.len, total_distance });
-		@panic("TOTAL DISTANCE exceeds length");
-	}
+    for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
+        try complete_blocks.append(complete_blocks.items[i]);
+    }
 
-	for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
-		try complete_blocks.append(complete_blocks.items[i]);
-	}
-
-	cbp.* = current_bit_position;
+    cbp.* = current_bit_position;
 }

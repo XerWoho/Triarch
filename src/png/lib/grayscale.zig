@@ -14,7 +14,7 @@ pub fn getGrayscale(allocator: std.mem.Allocator, pixels: []PixelTypes.PixelStru
         var brightness = Constants.R_FLOAT_COEFFICIENTS * r + Constants.G_FLOAT_COEFFICIENTS * g + Constants.B_FLOAT_COEFFICIENTS * b;
         brightness = brightness * (a / 255);
 
-        if(binary) {
+        if (binary) {
             if (brightness > 220.5) {
                 try copy_pixel.append(PixelTypes.PixelStruct{
                     .R = Constants.RGB_WHITE,

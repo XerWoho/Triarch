@@ -4,15 +4,7 @@ const PIXEL_TYPE = @import("../../png/types/pixels.zig");
 
 const Constants = @import("../constants.zig");
 
-pub fn getHeatmap(
-    allocator: std.mem.Allocator, 
-    png: *const PngTypes.PNGStruct, 
-    grayscale_data: []PIXEL_TYPE.PixelStruct, 
-
-    invert: bool,
-    split_w: u16,
-    split_h: u16
-) !std.ArrayList([]f32) {
+pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, grayscale_data: []PIXEL_TYPE.PixelStruct, invert: bool, split_w: u16, split_h: u16) !std.ArrayList([]f32) {
     const WIDTH = png.IHDR.width;
     const HEIGHT = png.IHDR.height;
     const WIDTH_1P: u16 = @divTrunc(WIDTH, 10); // 10 Percent of the Width
@@ -20,18 +12,18 @@ pub fn getHeatmap(
 
     const CONST_SPLIT_WIDTH = @divTrunc(WIDTH, split_w);
     const CONST_SPLIT_HEIGHT = @divTrunc(HEIGHT, split_h);
-    
+
     // Checking to see the if overflow of the division
-    // for the square exceeds the 10% threshold 
+    // for the square exceeds the 10% threshold
     // of the width or the height
     //
-    // if it is less than 10%, we can just ignore the 
+    // if it is less than 10%, we can just ignore the
     // overflow and move on. Else we store the Remainders
     // and add them during the heatmap creation.
     var REMAINDER_WIDTH: u16 = WIDTH % split_w;
-    if(REMAINDER_WIDTH < WIDTH_1P) REMAINDER_WIDTH = 0;
+    if (REMAINDER_WIDTH < WIDTH_1P) REMAINDER_WIDTH = 0;
     var REMAINDER_HEIGHT: u16 = HEIGHT % split_h;
-    if(REMAINDER_HEIGHT < HEIGHT_1P) REMAINDER_HEIGHT = 0;
+    if (REMAINDER_HEIGHT < HEIGHT_1P) REMAINDER_HEIGHT = 0;
 
     var HEATMAP = std.ArrayList([]f32).init(allocator);
     var main_height_index: u64 = 0;
@@ -39,7 +31,7 @@ pub fn getHeatmap(
     while (main_height_index < HEIGHT) {
         var HEATMAP_ROW = std.ArrayList(f32).init(allocator);
         var EXTRA_HEIGHT: u8 = 0;
-        if(REMAINDER_HEIGHT > 0) {
+        if (REMAINDER_HEIGHT > 0) {
             EXTRA_HEIGHT = 1;
             REMAINDER_HEIGHT -= 1;
         }
@@ -47,14 +39,14 @@ pub fn getHeatmap(
         const SPLIT_HEIGHT = CONST_SPLIT_HEIGHT + EXTRA_HEIGHT;
         while (main_width_index < WIDTH) {
             var EXTRA_WIDTH: u8 = 0;
-            if(REMAINDER_WIDTH > 0) {
+            if (REMAINDER_WIDTH > 0) {
                 EXTRA_WIDTH = 1;
                 REMAINDER_WIDTH -= 1;
             }
 
             const SPLIT_WIDTH = CONST_SPLIT_WIDTH + EXTRA_WIDTH;
             var square_sum: u32 = 0;
-            
+
             var square_height_index: u64 = 0;
             var square_width_index: u64 = 0;
 
@@ -64,7 +56,7 @@ pub fn getHeatmap(
                     const PIXEL_HEIGHT_OFFSET = main_height_index * WIDTH;
                     const PIXEL_SQUARE_OFFSET = square_width_index + square_height_index * WIDTH;
                     const PIXEL_INDEX = PIXEL_SQUARE_OFFSET + PIXEL_WIDTH_OFFSET + PIXEL_HEIGHT_OFFSET;
-                    if(grayscale_data.len <= PIXEL_INDEX) {
+                    if (grayscale_data.len <= PIXEL_INDEX) {
                         square_width_index += 1;
                         continue;
                     }
@@ -77,7 +69,7 @@ pub fn getHeatmap(
 
                     const average: i32 = @divTrunc(total_sum, 3);
 
-                    if(invert) {
+                    if (invert) {
                         square_sum += @abs(average - Constants.RGB_WHITE); // invert the colors (255 -> 0 | 0 -> 255)
                     } else {
                         square_sum += @abs(average);
@@ -104,7 +96,6 @@ pub fn getHeatmap(
         main_height_index += SPLIT_HEIGHT;
         main_width_index = 0;
     }
-
 
     return HEATMAP;
 }

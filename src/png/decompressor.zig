@@ -1,5 +1,4 @@
 const std = @import("std");
-const clap = @import("clap");
 
 const Conversions = @import("lib/conversions.zig");
 const Grayscale = @import("lib/grayscale.zig");
@@ -56,7 +55,7 @@ pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !Decompres
         std.debug.print("{any}\n", .{err});
         @panic("Conversion of pixels via filter failed.");
     };
-    
+
     return DecompressedPngStruct{
         .png = png,
         .pixels = pixel_data,

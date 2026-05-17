@@ -15,8 +15,8 @@ pub fn getHuffman(allocator: std.mem.Allocator, binary: []u8) !std.ArrayList(u8)
     var huffman = HuffmanTypes.HuffmanStruct{
         .bfinal = 0,
         .btype = 0,
-        .hclen =  0,
-        .hdist =  0,
+        .hclen = 0,
+        .hdist = 0,
         .hlit = 0,
     };
 
@@ -25,7 +25,7 @@ pub fn getHuffman(allocator: std.mem.Allocator, binary: []u8) !std.ArrayList(u8)
         const BFINAL = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + Constants.BIT_LENGTH], true, u1);
         current_bit_position += Constants.BIT_LENGTH;
         huffman.bfinal = BFINAL;
-        
+
         const BTYPE = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + Constants.BIT_LENGTH * 2], true, u2);
         current_bit_position += Constants.BIT_LENGTH * 2;
         huffman.btype = BTYPE;
@@ -38,10 +38,7 @@ pub fn getHuffman(allocator: std.mem.Allocator, binary: []u8) !std.ArrayList(u8)
     return complete_blocks;
 }
 
-fn handleHuffmanCodeCreation(
-    allocator: std.mem.Allocator, 
-    code_lengths: []u8
-) !std.ArrayList([]u8) {
+fn handleHuffmanCodeCreation(allocator: std.mem.Allocator, code_lengths: []u8) !std.ArrayList([]u8) {
     var stored_codes = std.ArrayList([]u8).init(allocator);
     std.mem.sort(u8, code_lengths, {}, comptime std.sort.asc(u8));
 
@@ -80,7 +77,7 @@ fn handleHuffmanCodeCreation(
             for (0..code_length - last_code.len) |_| {
                 try create_code.append(0);
             }
-        }  
+        }
 
         try stored_codes.append(create_code.items);
     }
@@ -125,7 +122,7 @@ fn noHuffman(binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !void
 
     var enumerate: u32 = 0;
     while (enumerate < LEN) {
-        const data_block = binary[current_bit_position.. current_bit_position + Constants.BYTE_LENGTH];
+        const data_block = binary[current_bit_position .. current_bit_position + Constants.BYTE_LENGTH];
         current_bit_position += Constants.BYTE_LENGTH;
         const parsed_data_block = try Conversions.binaryToInt(data_block, true, u8);
         try complete_blocks.append(parsed_data_block);
@@ -155,17 +152,11 @@ fn staticHuffman(binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !
                 break;
             }
 
-
-            try Lzss.handleLzssStatic(
-                symbol, 
-                binary, 
-                complete_blocks, 
-                &current_bit_position
-            );
+            try Lzss.handleLzssStatic(symbol, binary, complete_blocks, &current_bit_position);
             continue;
         }
 
-        const first_eight = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + 8],false, u16);
+        const first_eight = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + 8], false, u16);
         check_if_eight_valid: {
             // check if its between those values
             if (48 > first_eight or first_eight > 191) break :check_if_eight_valid;
@@ -186,12 +177,7 @@ fn staticHuffman(binary: []u8, cbp: *u32, complete_blocks: *std.ArrayList(u8)) !
                 @panic("INVALID SYMBOL");
             }
 
-            try Lzss.handleLzssStatic(
-                symbol, 
-                binary, 
-                complete_blocks, 
-                &current_bit_position
-            );
+            try Lzss.handleLzssStatic(symbol, binary, complete_blocks, &current_bit_position);
             continue;
         }
 
@@ -368,7 +354,6 @@ fn dynamicHuffman(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, complet
     defer hlit_builder.deinit();
     const hlit_huffman_codes = try buildHuffman(hlit_builder);
 
-
     const hdist_builder = try symbolsBuilder(allocator, binary, &current_bit_position, CLS, huffman.hdist);
     defer hdist_builder.deinit();
     const hdist_huffman_codes = try buildHuffman(hdist_builder);
@@ -401,19 +386,11 @@ fn dynamicHuffman(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, complet
             continue;
         }
 
-        _ = try Lzss.handleLzssDynamic(
-            allocator, 
-            hlit_symbol.?, 
-            binary, 
-            hdist_huffman_codes,
-            complete_blocks, 
-            &current_bit_position
-        );
+        _ = try Lzss.handleLzssDynamic(allocator, hlit_symbol.?, binary, hdist_huffman_codes, complete_blocks, &current_bit_position);
     }
 
     cbp.* = current_bit_position;
 }
-
 
 fn buildHuffman(builder: std.ArrayList(u8)) !std.ArrayList(HuffmanTypes.CodeLengthSymbolsStruct) {
     const allocator = std.heap.page_allocator;
