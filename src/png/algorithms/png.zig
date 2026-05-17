@@ -24,7 +24,7 @@ pub fn getPng(allocator: std.mem.Allocator, binary: []u8) !PngTypes.PNGStruct {
     try getPlte(allocator, &png, binary, &current_bit_position);
     try getAncillary(allocator, &png, binary, &current_bit_position);
 
-    var IDAT_CHUNKS = std.ArrayList(CriticalChunkTypes.IDATStruct).init(allocator);
+    var IDAT_CHUNKS = try std.ArrayList(CriticalChunkTypes.IDATStruct).initCapacity(allocator, 30);
     while (!std.mem.eql(u8, binary[current_bit_position + Constants.BYTE_LENGTH .. current_bit_position + Constants.BYTE_LENGTH * 2], Constants.IEND_SIG)) {
         try getIdat(allocator, binary, &current_bit_position, &IDAT_CHUNKS, @intCast(IDAT_CHUNKS.items.len));
     }
@@ -82,7 +82,7 @@ fn getIhdr(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: []u8,
 
 fn getPlte(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: []u8, cbp: *u32) !void {
     var current_bit_position = cbp.*;
-    var rgb_array = std.ArrayList(PngTypes.RGBStruct).init(allocator);
+    var rgb_array = try std.ArrayList(PngTypes.RGBStruct).initCapacity(allocator, 30);
 
     png.PLTE.size = 0;
     png.PLTE.crc = &[_]u8{};
@@ -120,7 +120,7 @@ fn getPlte(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: []u8,
                 .G = green_palette,
                 .B = blue_palette,
             };
-            try rgb_array.append(RGB);
+            try rgb_array.append(allocator, RGB);
         }
 
         const plte_png_crc = binary[current_bit_position .. current_bit_position + Constants.BYTE_LENGTH];
@@ -214,7 +214,7 @@ fn getIdat(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, idat_chunks: *
         IDAT.crc = idat_png_crc;
         IDAT.data = compressed_data;
 
-        try idat_chunks.append(IDAT);
+        try idat_chunks.append(allocator, IDAT);
         cbp.* = current_bit_position;
         return;
     }
@@ -257,6 +257,6 @@ fn getIdat(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, idat_chunks: *
     IDAT.zlib_fcheck_value = validation_value;
     IDAT.crc = idat_png_crc;
 
-    try idat_chunks.append(IDAT);
+    try idat_chunks.append(allocator, IDAT);
     cbp.* = current_bit_position;
 }

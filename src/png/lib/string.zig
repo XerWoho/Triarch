@@ -1,11 +1,11 @@
 const std = @import("std");
 
-pub fn removeWhitespace(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
-	var removed_whitespace = std.ArrayList(u8).init(allocator);
+pub fn removeWhitespace(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayList(u8) {
+	var removed_whitespace = try std.ArrayList(u8).initCapacity(allocator, 30);
 
 	for(bytes) |byte| {
 		if(std.ascii.isWhitespace(byte)) continue;
-		try removed_whitespace.append(byte);
+		try removed_whitespace.append(allocator, byte);
 	}
 
 	return removed_whitespace;
@@ -25,11 +25,11 @@ pub fn reverseStringNoAlloc(bytes: []u8, out_buf: []u8) ![]u8 {
 }
 
 pub fn reverseString(allocator: std.mem.Allocator, bytes: []u8) !std.ArrayListAligned(u8, null) {
-	var reversed_string = std.ArrayList(u8).init(allocator);
+	var reversed_string = try std.ArrayList(u8).initCapacity(allocator, 30);
 
 	var index = bytes.len;
 	while(index > 0) {
-		try reversed_string.append(bytes[index - 1]);
+		try reversed_string.append(allocator, bytes[index - 1]);
 		index -= 1;
 	}
 

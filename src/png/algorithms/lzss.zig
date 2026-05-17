@@ -68,6 +68,8 @@ pub fn handleLzssStatic(
     complete_blocks: *std.ArrayList(u8),
     cbp: *u32,
 ) !void {
+    const allocator = std.heap.page_allocator;
+
     var current_bit_position = cbp.*;
     const block_symbol = try getBlockSymbol(symbol);
     const block_extra_bits = try Conversions.binaryToInt(binary[current_bit_position .. current_bit_position + block_symbol.extra_bits], true, u16);
@@ -88,7 +90,7 @@ pub fn handleLzssStatic(
     }
 
     for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
-        try complete_blocks.append(complete_blocks.items[i]);
+        try complete_blocks.append(allocator, complete_blocks.items[i]);
     }
 
     cbp.* = current_bit_position;
@@ -110,9 +112,9 @@ pub fn handleLzssDynamic(
     const total_copies = block_symbol.base_length + block_extra_bits;
 
     var distance_symbol: ?u8 = null;
-    var distance_symbol_storer = std.ArrayList(u8).init(allocator);
+    var distance_symbol_storer = try std.ArrayList(u8).initCapacity(allocator, 30);
     while (current_bit_position < binary.len) {
-        try distance_symbol_storer.append(binary[current_bit_position] - Constants.INT_TO_ASCII_OFFSET);
+        try distance_symbol_storer.append(allocator, binary[current_bit_position] - Constants.INT_TO_ASCII_OFFSET);
         current_bit_position += 1;
         for (0..hdist_huffman_codes.items.len) |i| {
             const hdist_huffman_code = hdist_huffman_codes.items[i];
@@ -123,7 +125,7 @@ pub fn handleLzssDynamic(
             continue;
         }
         if (distance_symbol == null) continue;
-        distance_symbol_storer.clearAndFree();
+        distance_symbol_storer.clearAndFree(allocator);
         break;
     }
     const dist_symbol = try getDistSymbol(distance_symbol.?);
@@ -138,7 +140,7 @@ pub fn handleLzssDynamic(
     }
 
     for (complete_blocks.items.len - total_distance..complete_blocks.items.len - total_distance + total_copies) |i| {
-        try complete_blocks.append(complete_blocks.items[i]);
+        try complete_blocks.append(allocator, complete_blocks.items[i]);
     }
 
     cbp.* = current_bit_position;

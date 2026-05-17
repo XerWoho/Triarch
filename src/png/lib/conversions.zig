@@ -24,7 +24,7 @@ pub fn intToBinary(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligne
     };
 
     var stored_byte: u32 = byte;
-    var return_string = std.ArrayList(u8).init(allocator);
+    var return_string = try std.ArrayList(u8).initCapacity(allocator, 30);
     var last_max: i16 = -1;
 
     while (stored_byte != 0) {
@@ -50,10 +50,10 @@ pub fn intToBinary(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligne
 }
 
 pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.ArrayList(u8) {
-    var return_string = std.ArrayList(u8).init(allocator);
+    var return_string = try std.ArrayList(u8).initCapacity(allocator, 30);
     var index: u32 = 0;
 
-    var byte = std.ArrayList(u8).init(allocator);
+    var byte = try std.ArrayList(u8).initCapacity(allocator, 30);
     while (index < hex.len) {
         const H = hex[index .. index + 1];
 
@@ -67,17 +67,17 @@ pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.Arra
         const VALUE = Constants.HEX_VALUES[KEY_INDEX.?];
         const converted_value = try std.fmt.allocPrint(allocator, "{s}", .{VALUE});
         defer allocator.free(converted_value);
-        try byte.appendSlice(converted_value);
+        try byte.appendSlice(allocator, converted_value);
 
         if (index % 2 != 0) {
             if (lsb) {
                 var reversed_converted_value = try String.reverseString(allocator, byte.items);
-                defer reversed_converted_value.deinit();
-                try return_string.appendSlice(reversed_converted_value.items);
+                defer reversed_converted_value.deinit(allocator);
+                try return_string.appendSlice(allocator, reversed_converted_value.items);
             } else {
-                try return_string.appendSlice(byte.items);
+                try return_string.appendSlice(allocator, byte.items);
             }
-            byte.clearAndFree();
+            byte.clearAndFree(allocator);
         }
         index += 1;
     }
@@ -86,12 +86,12 @@ pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.Arra
 }
 
 // to HEX
-pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligned(u8, null) {
+pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayList(u8) {
     const DIVISOR: u8 = 16;
     var multiple: u32 = 0;
     var last_stored_quotient: u32 = byte;
 
-    var return_string = std.ArrayList(u8).init(allocator);
+    var return_string = try std.ArrayList(u8).initCapacity(allocator, 30);
 
     while (last_stored_quotient != 0) {
         // does division
@@ -101,28 +101,28 @@ pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayListAligned(u
         }
         const remainder: u32 = last_stored_quotient - DIVISOR * multiple;
         if (remainder > 9) {
-            try return_string.insertSlice(0, Constants.HEX_LETTERS[remainder - 10]);
+            try return_string.insertSlice(allocator, 0, Constants.HEX_LETTERS[remainder - 10]);
         } else {
             const int_to_num = try std.fmt.allocPrint(allocator, "{d}", .{remainder});
             defer allocator.free(int_to_num);
-            try return_string.insertSlice(0, int_to_num);
+            try return_string.insertSlice(allocator, 0, int_to_num);
         }
 
         last_stored_quotient = multiple;
     }
 
     if (byte == 0) {
-        try return_string.insertSlice(0, "0");
-        try return_string.insertSlice(0, "0");
+        try return_string.insertSlice(allocator, 0, "0");
+        try return_string.insertSlice(allocator, 0, "0");
     } else if (byte <= 16) {
         if (return_string.items.len == 2) {
             return return_string;
         }
-        try return_string.insertSlice(0, "0");
+        try return_string.insertSlice(allocator, 0, "0");
     }
 
     if (return_string.items.len == 1) {
-        try return_string.insertSlice(0, "0");
+        try return_string.insertSlice(allocator, 0, "0");
     }
 
     return return_string;

@@ -9,15 +9,15 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 	defer allocator.free(full_path);
 
 	// INIT PNG DECOMPRESSION + GRAYSCALE
-	const decompressed = try Decompressor.decompressPng(allocator, full_path);
-	defer decompressed.pixels.deinit();
+	var decompressed = try Decompressor.decompressPng(allocator, full_path);
+	defer decompressed.pixels.deinit(allocator);
 
 	// INIT GRAY SCALING
-	const gray_scaled = try Grayscale.getGrayscale(allocator, decompressed.pixels.items, false);
-	defer gray_scaled.deinit();
+	var gray_scaled = try Grayscale.getGrayscale(allocator, decompressed.pixels.items, false);
+	defer gray_scaled.deinit(allocator);
 
 	// INIT HEATMAP
-	const heatmap = try Heatmap.getHeatmap(
+	var heatmap = try Heatmap.getHeatmap(
 		allocator, 
 		&decompressed.png, 
 		gray_scaled.items, 
@@ -25,15 +25,16 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 		@intCast(decompressed.png.IHDR.width),
 		@intCast(decompressed.png.IHDR.height)
 	);
-	var heatmap_flat = std.ArrayList(f32).init(allocator);
+
+	var heatmap_flat = try std.ArrayList(f32).initCapacity(allocator, 30);
 	for(0..heatmap.items.len) |i|{
 		const h = heatmap.items[i];
 		for(0..h.len) |j|{
 			const p = h[j];
-			try heatmap_flat.append(p);
+			try heatmap_flat.append(allocator, p);
 		}
 	}
-	defer heatmap.deinit();
+	defer heatmap.deinit(allocator);
 
 	return heatmap_flat;
 }

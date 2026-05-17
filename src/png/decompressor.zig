@@ -17,38 +17,38 @@ const DecompressedPngStruct = struct {
 };
 
 pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !DecompressedPngStruct {
-    const allocated_hex_dump = HexDump.getHexDump(allocator, path_string) catch |err| {
+    var allocated_hex_dump = HexDump.getHexDump(allocator, path_string) catch |err| {
         std.debug.print("Error: {s}\n", .{@errorName(err)});
         std.process.exit(0);
     };
-    defer allocated_hex_dump.deinit();
+    defer allocated_hex_dump.deinit(allocator);
 
     // INIT PNG
     var png = Png.getPng(allocator, allocated_hex_dump.items) catch |err| {
         std.debug.print("{any}\n", .{err});
         @panic("Getting PNG data failed.");
     };
-    defer png.IDAT.deinit();
+    defer png.IDAT.deinit(allocator);
 
     // CONVERT PNG DATA
-    var data = std.ArrayList(u8).init(allocator);
+    var data = try std.ArrayList(u8).initCapacity(allocator, 30);
     for (png.IDAT.items) |idat| {
-        try data.appendSlice(idat.data);
+        try data.appendSlice(allocator, idat.data);
     }
 
-    defer data.deinit();
-    const binary_hex = Conversions.hexToBinary(allocator, data.items, true) catch |err| {
+    defer data.deinit(allocator);
+    var binary_hex = Conversions.hexToBinary(allocator, data.items, true) catch |err| {
         std.debug.print("{any}\n", .{err});
         @panic("Binary to hex conversion failed.");
     };
-    defer binary_hex.deinit();
+    defer binary_hex.deinit(allocator);
 
     // INIT HUFFMAN
-    const uncompressed_data = Huffman.getHuffman(allocator, binary_hex.items) catch |err| {
+    var uncompressed_data = Huffman.getHuffman(allocator, binary_hex.items) catch |err| {
         std.debug.print("{any}\n", .{err});
         @panic("Getting huffman data failed.");
     };
-    defer uncompressed_data.deinit();
+    defer uncompressed_data.deinit(allocator);
 
     // INIT FILTER
     const pixel_data = Filter.getFilter(allocator, uncompressed_data, &png) catch |err| {

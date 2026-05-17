@@ -3,7 +3,7 @@ const PixelTypes = @import("../../png/types/pixels.zig");
 const Constants = @import("../constants.zig");
 
 pub fn getGrayscale(allocator: std.mem.Allocator, pixels: []PixelTypes.PixelStruct, binary: bool) !std.ArrayList(PixelTypes.PixelStruct) {
-    var copy_pixel = std.ArrayList(PixelTypes.PixelStruct).init(allocator);
+    var copy_pixel = try std.ArrayList(PixelTypes.PixelStruct).initCapacity(allocator, 30);
     for (0..pixels.len) |i| {
         const pixel = pixels[i];
         const r: f32 = @floatFromInt(pixel.R);
@@ -16,7 +16,7 @@ pub fn getGrayscale(allocator: std.mem.Allocator, pixels: []PixelTypes.PixelStru
 
         if (binary) {
             if (brightness > 220.5) {
-                try copy_pixel.append(PixelTypes.PixelStruct{
+                try copy_pixel.append(allocator, PixelTypes.PixelStruct{
                     .R = Constants.RGB_WHITE,
                     .G = Constants.RGB_WHITE,
                     .B = Constants.RGB_WHITE,
@@ -25,7 +25,7 @@ pub fn getGrayscale(allocator: std.mem.Allocator, pixels: []PixelTypes.PixelStru
                     .ROW_INDEX = pixel.ROW_INDEX,
                 });
             } else {
-                try copy_pixel.append(PixelTypes.PixelStruct{
+                try copy_pixel.append(allocator, PixelTypes.PixelStruct{
                     .R = Constants.RGB_BLACK,
                     .G = Constants.RGB_BLACK,
                     .B = Constants.RGB_BLACK,
@@ -38,7 +38,7 @@ pub fn getGrayscale(allocator: std.mem.Allocator, pixels: []PixelTypes.PixelStru
             const gray: u8 = @intFromFloat(@min(@max(brightness, 0.0), 255.0));
 
             // Append grayscale pixel
-            try copy_pixel.append(PixelTypes.PixelStruct{
+            try copy_pixel.append(allocator, PixelTypes.PixelStruct{
                 .R = gray,
                 .G = gray,
                 .B = gray,

@@ -23,17 +23,20 @@ pub fn brain(allocator: std.mem.Allocator) !void {
         allocator,
         "src/nn/data/mnist_train/",
     );
-    const train_file_list = try train_file_list_alloc.toOwnedSlice();
+    const train_file_list = try train_file_list_alloc.toOwnedSlice(allocator);
     defer allocator.free(train_file_list);
 
     const OUTPUT_NODES_AMOUNT = 10;
     var layerSizes: [3]usize = .{ 28 * 28, 128, OUTPUT_NODES_AMOUNT };
     var nn = try NeuralNetwork.create(&layerSizes);
 
-    const rand = std.crypto.random;
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    var rand_implementation: std.Random.IoSource = .{ .io = io };
+    var rand = rand_implementation.interface();
     for (0..10) |_| {
         var corrects: usize = 0;
-        for (0..1000) |_| {
+        for (0..100) |_| {
             const random = rand.intRangeAtMost(usize, 0, OUTPUT_NODES_AMOUNT - 1);
             const random_file_entry: usize = random * 6500 + random;
             const str_file_target = train_file_list[random_file_entry][0..1];
@@ -43,11 +46,11 @@ pub fn brain(allocator: std.mem.Allocator) !void {
                 10,
             );
 
-            const flat_file = try FlatHeatmap.createFlatHeatmap(
+            var flat_file = try FlatHeatmap.createFlatHeatmap(
                 allocator,
                 &.{ "src/nn/data/mnist_train", train_file_list[random_file_entry] },
             );
-            defer flat_file.deinit();
+            defer flat_file.deinit(allocator);
             const inputs = flat_file.items;
 
             var expected = [_]f32{0} ** OUTPUT_NODES_AMOUNT;
@@ -66,6 +69,6 @@ pub fn brain(allocator: std.mem.Allocator) !void {
             try nn.trainStep(inputs, &expected, 0.08);
         }
 
-        std.debug.print("{d} / 1000\n", .{corrects});
+        std.debug.print("{d} / 100\n", .{corrects});
     }
 }

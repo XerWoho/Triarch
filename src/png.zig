@@ -4,7 +4,7 @@ const clap = @import("clap");
 const Decompressor = @import("./png/decompressor.zig");
 const Draw = @import("./png/lib/draw.zig");
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     var allocator = std.heap.page_allocator;
 
     const params = comptime clap.parseParamsComptime(
@@ -21,13 +21,10 @@ pub fn main() !void {
     };
 
     var diag = clap.Diagnostic{};
-    const res = clap.parse(clap.Help, &params, parsers, .{
+    const res = try clap.parse(clap.Help, &params, parsers, init.minimal.args, .{
         .diagnostic = &diag,
         .allocator = allocator,
-    }) catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("parsing went wrong!");
-    };
+    });
     defer res.deinit();
 
     var invert: u8 = 0;
@@ -43,10 +40,7 @@ pub fn main() !void {
         return;
     }
     if (res.args.path) |p| {
-        path_string = allocator.alloc(u8, p.len) catch |err| {
-            std.debug.print("{any}\n", .{err});
-            @panic("Allocation failed.");
-        };
+        path_string = try allocator.alloc(u8, p.len);
         std.mem.copyForwards(u8, path_string, p);
     }
     if (res.args.verbose) |v|
@@ -65,11 +59,8 @@ pub fn main() !void {
 
 
     // INIT PNG DECOMPRESSION + GRAYSCALE
-	const decompressed = Decompressor.decompressPng(allocator, path_string)  catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("Decompressing png failed.");
-    };
-    defer decompressed.pixels.deinit();
+	var decompressed = try Decompressor.decompressPng(allocator, path_string);
+    defer decompressed.pixels.deinit(allocator);
 
     if(decompressed.png.IHDR.width < square or decompressed.png.IHDR.height < square) {
         std.debug.print("Square size cannot be larger than width or height!", .{});

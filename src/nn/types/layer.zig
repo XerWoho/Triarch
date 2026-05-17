@@ -11,13 +11,21 @@ fn sigmoidDerivative(x: f32) f32 {
 }
 
 fn randomValue() f32 {
-    const rand = std.crypto.random;
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    var rand_implementation: std.Random.IoSource = .{ .io = io };
+    var rand = rand_implementation.interface();
+
     return rand.float(f32) * 2.0 - 1.0;
 }
 
 fn xavierInit(in: usize, out: usize) f32 {
     const limit = @sqrt(6.0 / @as(f32, @floatFromInt(in + out)));
-    const rand = std.crypto.random;
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    var rand_implementation: std.Random.IoSource = .{ .io = io };
+    var rand = rand_implementation.interface();
+    
     return rand.float(f32) * 2.0 * limit - limit;
 }
 

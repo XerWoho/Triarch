@@ -16,7 +16,7 @@ pub fn getFilter(allocator: std.mem.Allocator, uncompressed_data: std.ArrayList(
 }
 
 fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_height: u64, row_size: u64) !std.ArrayList(PixelTypes.PixelStruct) {
-    var pixels_wrapper = std.ArrayList(PixelTypes.PixelStruct).init(allocator);
+    var pixels_wrapper = try std.ArrayList(PixelTypes.PixelStruct).initCapacity(allocator, 30);
     const uncompressed = uncompressed_data;
 
     var current_filter_method: u8 = 0;
@@ -42,7 +42,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
 
                 const current_pixel = PixelTypes.PixelStruct{ .R = r_bit, .G = g_bit, .B = b_bit, .A = a_bit, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-                try pixels_wrapper.append(current_pixel);
+                try pixels_wrapper.append(allocator, current_pixel);
                 row_index += 4;
                 continue;
             }
@@ -215,7 +215,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
             uncompressed[bit_index + 3] = a_bit;
             const current_pixel = PixelTypes.PixelStruct{ .R = r_bit, .G = g_bit, .B = b_bit, .A = a_bit, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-            try pixels_wrapper.append(current_pixel);
+            try pixels_wrapper.append(allocator, current_pixel);
             row_index += 4;
         }
         height_index += 1;
@@ -225,7 +225,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
 }
 
 fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_height: u64, row_size: u64) !std.ArrayList(PixelTypes.PixelStruct) {
-    var pixels_wrapper = std.ArrayList(PixelTypes.PixelStruct).init(allocator);
+    var pixels_wrapper = try std.ArrayList(PixelTypes.PixelStruct).initCapacity(allocator, 30);
     const uncompressed = uncompressed_data;
 
     var current_filter_method: u8 = 0;
@@ -250,7 +250,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
 
                 const current_pixel = PixelTypes.PixelStruct{ .R = r_bit, .G = g_bit, .B = b_bit, .A = 255, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-                try pixels_wrapper.append(current_pixel);
+                try pixels_wrapper.append(allocator, current_pixel);
                 row_index += 3;
                 continue;
             }
@@ -391,7 +391,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
             uncompressed[bit_index + 2] = b_bit;
             const current_pixel = PixelTypes.PixelStruct{ .R = r_bit, .G = g_bit, .B = b_bit, .A = 255, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-            try pixels_wrapper.append(current_pixel);
+            try pixels_wrapper.append(allocator, current_pixel);
             row_index += 3;
         }
         height_index += 1;
@@ -401,7 +401,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
 }
 
 fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, image_height: u64, row_size: u64) !std.ArrayList(PixelTypes.PixelStruct) {
-    var pixels_wrapper = std.ArrayList(PixelTypes.PixelStruct).init(allocator);
+    var pixels_wrapper = try std.ArrayList(PixelTypes.PixelStruct).initCapacity(allocator, 30);
     const uncompressed = uncompressed_data;
 
     var current_filter_method: u8 = 0;
@@ -423,7 +423,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
                 const gray_scale = uncompressed[bit_index];
                 const current_pixel = PixelTypes.PixelStruct{ .R = gray_scale, .G = gray_scale, .B = gray_scale, .A = 255, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-                try pixels_wrapper.append(current_pixel);
+                try pixels_wrapper.append(allocator, current_pixel);
                 row_index += 1;
                 continue;
             }
@@ -500,7 +500,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
             uncompressed[bit_index] = gray_scale;
             const current_pixel = PixelTypes.PixelStruct{ .R = gray_scale, .G = gray_scale, .B = gray_scale, .A = 255, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-            try pixels_wrapper.append(current_pixel);
+            try pixels_wrapper.append(allocator, current_pixel);
             row_index += 1;
         }
         height_index += 1;
@@ -510,7 +510,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
 }
 
 fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_height: u64, row_size: u64) !std.ArrayList(PixelTypes.PixelStruct) {
-    var pixels_wrapper = std.ArrayList(PixelTypes.PixelStruct).init(allocator);
+    var pixels_wrapper = try std.ArrayList(PixelTypes.PixelStruct).initCapacity(allocator, 30);
     const uncompressed = uncompressed_data;
 
     var current_filter_method: u8 = 0;
@@ -533,7 +533,7 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
                 const opacity_scale = uncompressed[bit_index + 1];
                 const current_pixel = PixelTypes.PixelStruct{ .R = gray_scale, .G = gray_scale, .B = gray_scale, .A = opacity_scale, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-                try pixels_wrapper.append(current_pixel);
+                try pixels_wrapper.append(allocator, current_pixel);
                 row_index += 2;
                 continue;
             }
@@ -641,7 +641,7 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
             uncompressed[bit_index] = gray_scale;
             const current_pixel = PixelTypes.PixelStruct{ .R = gray_scale, .G = gray_scale, .B = gray_scale, .A = opacity_scale, .COLUMN_INDEX = height_index, .ROW_INDEX = @divTrunc((row_index - 1), 4) };
 
-            try pixels_wrapper.append(current_pixel);
+            try pixels_wrapper.append(allocator, current_pixel);
             row_index += 2;
         }
         height_index += 1;

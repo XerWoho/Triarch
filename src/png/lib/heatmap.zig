@@ -25,11 +25,11 @@ pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, 
     var REMAINDER_HEIGHT: u16 = HEIGHT % split_h;
     if (REMAINDER_HEIGHT < HEIGHT_1P) REMAINDER_HEIGHT = 0;
 
-    var HEATMAP = std.ArrayList([]f32).init(allocator);
+    var HEATMAP = try std.ArrayList([]f32).initCapacity(allocator, 30);
     var main_height_index: u64 = 0;
     var main_width_index: u64 = 0;
     while (main_height_index < HEIGHT) {
-        var HEATMAP_ROW = std.ArrayList(f32).init(allocator);
+        var HEATMAP_ROW = try std.ArrayList(f32).initCapacity(allocator, 30);
         var EXTRA_HEIGHT: u8 = 0;
         if (REMAINDER_HEIGHT > 0) {
             EXTRA_HEIGHT = 1;
@@ -88,11 +88,11 @@ pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, 
 
             const square_sum_float: f32 = @floatFromInt(square_sum_average);
             const rgb_white_float: f32 = @floatFromInt(Constants.RGB_WHITE);
-            try HEATMAP_ROW.append(square_sum_float / rgb_white_float);
+            try HEATMAP_ROW.append(allocator, square_sum_float / rgb_white_float);
             main_width_index += SPLIT_WIDTH;
         }
 
-        try HEATMAP.append(HEATMAP_ROW.items);
+        try HEATMAP.append(allocator, HEATMAP_ROW.items);
         main_height_index += SPLIT_HEIGHT;
         main_width_index = 0;
     }

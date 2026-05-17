@@ -5,8 +5,10 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "png",
-        .root_source_file = b.path("src/png.zig"),
-        .target = b.graph.host,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/png.zig"),
+            .target = b.graph.host,
+        })
     });
 
     exe.root_module.addImport("clap", clap.module("clap"));
@@ -15,8 +17,10 @@ pub fn build(b: *std.Build) void {
     // Neural network standalone executable
     const nn_exe = b.addExecutable(.{
         .name = "nn",
-        .root_source_file = b.path("src/nn.zig"),
-        .target = b.graph.host,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/nn.zig"),
+            .target = b.graph.host,
+        })
     });
     nn_exe.root_module.addImport("clap", clap.module("clap"));
 
