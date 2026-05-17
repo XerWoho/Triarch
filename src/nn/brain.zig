@@ -26,9 +26,14 @@ pub fn brain(allocator: std.mem.Allocator) !void {
     const train_file_list = try train_file_list_alloc.toOwnedSlice(allocator);
     defer allocator.free(train_file_list);
 
+    const LEARNING_RATE = 0.08;
+    const MNIST_IMAGES_DISTANCE_PER_NUMBER = 6500;
+    const INPUT_NODES_AMOUNT = 28 * 28;
+    const HIDDEN_NODES_AMOUNT = 128;
     const OUTPUT_NODES_AMOUNT = 10;
-    var layerSizes: [3]usize = .{ 28 * 28, 128, OUTPUT_NODES_AMOUNT };
-    var nn = try NeuralNetwork.create(&layerSizes);
+
+    var layer_sizes: [3]usize = .{ INPUT_NODES_AMOUNT, HIDDEN_NODES_AMOUNT, OUTPUT_NODES_AMOUNT, };
+    var nn = try NeuralNetwork.create(&layer_sizes);
 
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
@@ -38,7 +43,7 @@ pub fn brain(allocator: std.mem.Allocator) !void {
         var corrects: usize = 0;
         for (0..100) |_| {
             const random = rand.intRangeAtMost(usize, 0, OUTPUT_NODES_AMOUNT - 1);
-            const random_file_entry: usize = random * 6500 + random;
+            const random_file_entry: usize = random * MNIST_IMAGES_DISTANCE_PER_NUMBER + random;
             const str_file_target = train_file_list[random_file_entry][0..1];
             const int_file_target = try std.fmt.parseInt(
                 u8,
@@ -66,7 +71,7 @@ pub fn brain(allocator: std.mem.Allocator) !void {
             const m = indexOfMaxValue(output.activations);
             if (m == int_file_target) corrects += 1;
 
-            try nn.trainStep(inputs, &expected, 0.08);
+            try nn.trainStep(inputs, &expected, LEARNING_RATE,);
         }
 
         std.debug.print("{d} / 100\n", .{corrects});

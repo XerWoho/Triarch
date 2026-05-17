@@ -48,12 +48,23 @@ pub fn backpropagate(self: *NeuralNetwork, inputs: []f32, expected: []f32) !void
     var deltaValues = try outputLayer.computeOutputDeltas(expected);
     try outputLayer.accumulateGradients(previousLayer.activations, deltaValues);
 
-    var hiddenLayer = self.layers[0];
-    deltaValues = try hiddenLayer.computeHiddenDeltas(
-        &outputLayer,
-        deltaValues,
-    );
-    try hiddenLayer.accumulateGradients(inputs, deltaValues);
+    var lastHiddenlayerIndex = self.layers.len - 2;
+    while(true) {
+        var nextLayer = self.layers[lastHiddenlayerIndex + 1];
+        var hiddenLayer = self.layers[lastHiddenlayerIndex];
+        deltaValues = try hiddenLayer.computeHiddenDeltas(
+            &nextLayer,
+            deltaValues,
+        );
+
+        if(lastHiddenlayerIndex == 0) {
+            try hiddenLayer.accumulateGradients(inputs, deltaValues);
+            break;
+        } 
+
+        try hiddenLayer.accumulateGradients(self.layers[lastHiddenlayerIndex - 1].activations, deltaValues);
+        lastHiddenlayerIndex -= 1;
+    }
 }
 
 pub fn applyGradients(self: *NeuralNetwork, learnRate: f32) !void {
