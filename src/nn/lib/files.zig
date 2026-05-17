@@ -5,16 +5,12 @@ pub fn getFilesFromDir(allocator: std.mem.Allocator, path: []const u8) !std.Arra
     defer dir.close();
 
     var files = std.ArrayList([]const u8).init(allocator);
-
     var it = dir.iterate();
     while (try it.next()) |entry| {
         if (entry.kind == .file) {
             // Copy the file name into allocator memory
             const name_copy = try allocator.dupe(u8, entry.name);
-            files.append(name_copy) catch |err| {
-				std.debug.print("{any}\n", .{err});
-				@panic("Appending failed.");
-			};
+            try files.append(name_copy);
         }
     }
     return files;
