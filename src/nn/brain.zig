@@ -66,6 +66,6 @@ pub fn brain(allocator: std.mem.Allocator) !void {
             try nn.trainStep(inputs, &expected, 0.08);
         }
 
-        std.debug.print("{d} / 100\n", .{corrects});
+        std.debug.print("{d} / 1000\n", .{corrects});
     }
 }
