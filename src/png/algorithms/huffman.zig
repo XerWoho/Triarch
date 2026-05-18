@@ -45,6 +45,7 @@ fn handleHuffmanCodeCreation(allocator: std.mem.Allocator, code_lengths: []u8) !
         if (code_length == 0) continue;
 
         var create_code = try std.ArrayList(u8).initCapacity(allocator, 30);
+        defer create_code.deinit(allocator);
 
         if (stored_codes.items.len > 0) {
             const last_code = stored_codes.items[stored_codes.items.len - 1];
@@ -57,7 +58,8 @@ fn handleHuffmanCodeCreation(allocator: std.mem.Allocator, code_lengths: []u8) !
             }
 
             if (stored_codes.items.len == 0) {
-                try stored_codes.append(allocator, create_code.items);
+                const owned = try allocator.dupe(u8, create_code.items);
+                try stored_codes.append(allocator, owned);
                 continue;
             }
         }
@@ -77,7 +79,8 @@ fn handleHuffmanCodeCreation(allocator: std.mem.Allocator, code_lengths: []u8) !
             }
         }
 
-        try stored_codes.append(allocator, create_code.items);
+        const owned = try allocator.dupe(u8, create_code.items);
+        try stored_codes.append(allocator, owned);
     }
 
     return stored_codes;
@@ -313,20 +316,30 @@ fn dynamicHuffman(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, complet
     var code_length_copy = [_]u8{0} ** Constants.HCLEN_ORDER.len;
     std.mem.copyBackwards(u8, &code_length_copy, &code_lengths);
     var code_creation = try handleHuffmanCodeCreation(allocator, &code_length_copy);
-    defer code_creation.deinit(allocator);
+    defer {
+        for(code_creation.items) |c| {
+            allocator.free(c);
+        }
+        code_creation.deinit(allocator);
+    }
 
     var used_indexes = try std.ArrayList(u8).initCapacity(allocator, 30);
     defer used_indexes.deinit(allocator);
 
     var huffman_codes = try std.ArrayList([]u8).initCapacity(allocator, 30);
-    defer huffman_codes.deinit(allocator);
+    defer {
+        for(huffman_codes.items) |h| {
+            allocator.free(h);
+        }
+        huffman_codes.deinit(allocator);
+    }
 
     for (0..code_lengths.len) |i| {
         const index_u8: u8 = @intCast(i);
         const current_code_length = code_lengths[index_u8];
         if (current_code_length == 0) {
             var test_code = [_]u8{2} ** 1;
-            try huffman_codes.append(allocator, &test_code);
+            try huffman_codes.append(allocator, try allocator.dupe(u8, &test_code));
             continue;
         }
 
@@ -336,20 +349,25 @@ fn dynamicHuffman(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, complet
             const huffman_code = code_creation.items[j];
             if (current_code_length == huffman_code.len) {
                 try used_indexes.append(allocator, j_index_u8);
-                try huffman_codes.append(allocator, huffman_code);
+                try huffman_codes.append(allocator, try allocator.dupe(u8, huffman_code));
                 break;
             }
         }
     }
 
     var CLS = try std.ArrayList(HuffmanTypes.CodeLengthSymbolsStruct).initCapacity(allocator, 30);
-    defer CLS.deinit(allocator);
+    defer {
+        for(CLS.items) |c| {
+            allocator.free(c.huffman_code);
+        }
+        CLS.deinit(allocator);
+    }
     for (0..19) |i| {
         if (code_lengths[i] == 0) continue;
 
         const huffman_code = huffman_codes.items[i];
         const bits_length = code_lengths[i];
-        const cls = HuffmanTypes.CodeLengthSymbolsStruct{ .symbol = @intCast(i), .bits_length = bits_length, .huffman_code = huffman_code };
+        const cls = HuffmanTypes.CodeLengthSymbolsStruct{ .symbol = @intCast(i), .bits_length = bits_length, .huffman_code = try allocator.dupe(u8, huffman_code) };
         try CLS.append(allocator, cls);
     }
 
@@ -357,13 +375,24 @@ fn dynamicHuffman(allocator: std.mem.Allocator, binary: []u8, cbp: *u32, complet
     defer hlit_builder.deinit(allocator);
 
     var hlit_huffman_codes = try buildHuffman(allocator, hlit_builder);
-    defer hlit_huffman_codes.deinit(allocator);
+    defer {
+        for(hlit_huffman_codes.items) |c| {
+            allocator.free(c.huffman_code);
+        }
+        hlit_huffman_codes.deinit(allocator);
+    }
+
 
     var hdist_builder = try symbolsBuilder(allocator, binary, &current_bit_position, CLS, huffman.hdist);
     defer hdist_builder.deinit(allocator);
 
     var hdist_huffman_codes = try buildHuffman(allocator, hdist_builder);
-    defer hdist_huffman_codes.deinit(allocator);
+    defer {
+        for(hdist_huffman_codes.items) |c| {
+            allocator.free(c.huffman_code);
+        }
+        hdist_huffman_codes.deinit(allocator);
+    }
 
     var hlit_bit_storer = try std.ArrayList(u8).initCapacity(allocator, 30);
     defer hlit_bit_storer.deinit(allocator);
@@ -420,7 +449,12 @@ fn buildHuffman(allocator: std.mem.Allocator, builder: std.ArrayList(u8)) !std.A
     defer used_huffman_codes.deinit(allocator);
 
     var huffman_codes = try handleHuffmanCodeCreation(allocator, copy_code_lengths_huffman.items);
-    defer huffman_codes.deinit(allocator);
+    defer {
+        for(huffman_codes.items) |h| {
+            allocator.free(h);
+        }
+        huffman_codes.deinit(allocator);
+    }
 
     for (0..code_lengths_huffman.items.len) |i| {
         const code_length = code_lengths_huffman.items[i];
@@ -433,7 +467,7 @@ fn buildHuffman(allocator: std.mem.Allocator, builder: std.ArrayList(u8)) !std.A
             if (std.mem.containsAtLeastScalar(u16, used_huffman_codes.items, 1, j_index_u16)) continue;
             try used_huffman_codes.append(allocator, j_index_u16);
 
-            const cls = HuffmanTypes.CodeLengthSymbolsStruct{ .bits_length = code_length, .huffman_code = huffman_code, .symbol = @intCast(i) };
+            const cls = HuffmanTypes.CodeLengthSymbolsStruct{ .bits_length = code_length, .huffman_code = try allocator.dupe(u8, huffman_code), .symbol = @intCast(i) };
 
             try huffman_storer.append(allocator, cls);
             break;
