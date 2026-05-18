@@ -24,7 +24,8 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
     for (0..image_height) |_| {
         var row_index: u64 = 0;
         while (true) {
-            const bit_index = height_index * row_size + row_index;
+            const height_row_size = height_index * row_size;
+            const bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
             if (bit_index >= uncompressed.len) break;
@@ -70,7 +71,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
                 u16_b_bit = @intCast(@mod(u16_b_bit + previous_b_bit, 256));
                 u16_a_bit = @intCast(@mod(u16_a_bit + previous_a_bit, 256));
             } else if (current_filter_method == 2) {
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: u16 = 0;
                 var top_g_bit: u16 = 0;
                 var top_b_bit: u16 = 0;
@@ -100,7 +101,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
                     previous_a_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: u16 = 0;
                 var top_g_bit: u16 = 0;
                 var top_b_bit: u16 = 0;
@@ -130,7 +131,7 @@ fn getFilterRgbA(allocator: std.mem.Allocator, uncompressed_data: []u8, image_he
                     previous_a_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: u16 = 0;
                 var top_g_bit: u16 = 0;
                 var top_b_bit: u16 = 0;
@@ -233,7 +234,8 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
     for (0..image_height) |_| {
         var row_index: u64 = 0;
         while (true) {
-            const bit_index = height_index * row_size + row_index;
+            const height_row_size = height_index * row_size;
+            const bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
             if (bit_index >= uncompressed.len) break;
@@ -274,7 +276,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
                 u16_g_bit = @intCast(@mod(u16_g_bit + previous_g_bit, 256));
                 u16_b_bit = @intCast(@mod(u16_b_bit + previous_b_bit, 256));
             } else if (current_filter_method == 2) {
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: u16 = 0;
                 var top_g_bit: u16 = 0;
                 var top_b_bit: u16 = 0;
@@ -299,7 +301,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
                     previous_b_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: u16 = 0;
                 var top_g_bit: u16 = 0;
                 var top_b_bit: u16 = 0;
@@ -324,7 +326,7 @@ fn getFilterRgb(allocator: std.mem.Allocator, uncompressed_data: []u8, image_hei
                     previous_b_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_r_bit: i16 = 0;
                 var top_g_bit: i16 = 0;
                 var top_b_bit: i16 = 0;
@@ -409,7 +411,8 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
     for (0..image_height) |_| {
         var row_index: u64 = 0;
         while (true) {
-            const bit_index = height_index * row_size + row_index;
+            const height_row_size = height_index * row_size;
+            const bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
             if (bit_index >= uncompressed.len) break;
@@ -439,7 +442,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
 
                 u16_gray_scale = @intCast(@mod(u16_gray_scale + previous_gray_scale_bit, 256));
             } else if (current_filter_method == 2) {
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: u16 = 0;
 
                 if (height_index > 0) {
@@ -454,7 +457,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
                     previous_gray_scale_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: u16 = 0;
 
                 if (height_index > 0) {
@@ -469,7 +472,7 @@ fn getFilterGrayscale(allocator: std.mem.Allocator, uncompressed_data: []u8, ima
                     previous_gray_scale_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: i16 = 0;
 
                 if (height_index > 0) {
@@ -518,7 +521,8 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
     for (0..image_height) |_| {
         var row_index: u64 = 0;
         while (true) {
-            const bit_index = height_index * row_size + row_index;
+            const height_row_size = height_index * row_size;
+            const bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
             if (bit_index >= uncompressed.len) break;
@@ -553,7 +557,7 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
                 u16_gray_scale = @intCast(@mod(u16_gray_scale + previous_gray_scale_bit, 256));
                 u16_opacity_scale = @intCast(@mod(u16_opacity_scale + previous_opacity_scale_bit, 256));
             } else if (current_filter_method == 2) {
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: u16 = 0;
                 var top_opacity_scale_bit: u16 = 0;
 
@@ -573,7 +577,7 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
                     previous_opacity_scale_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: u16 = 0;
                 var top_opacity_scale_bit: u16 = 0;
 
@@ -593,7 +597,7 @@ fn getFilterGrayscaleA(allocator: std.mem.Allocator, uncompressed_data: []u8, im
                     previous_opacity_scale_bit = uncompressed[bit_index - 1];
                 }
 
-                const row_move_up = height_index * row_size;
+                const row_move_up = height_row_size;
                 var top_gray_scale_bit: i16 = 0;
                 var top_opacity_scale_bit: i16 = 0;
 

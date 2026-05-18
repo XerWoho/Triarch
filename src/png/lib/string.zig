@@ -21,6 +21,7 @@ pub fn reverseStringNoAlloc(bytes: []u8, out_buf: []u8) ![]u8 {
         out_index += 1;
         index -= 1;
     }
+	
     return out_buf[0..bytes.len];
 }
 

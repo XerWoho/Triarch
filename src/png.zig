@@ -5,7 +5,13 @@ const Decompressor = @import("./png/decompressor.zig");
 const Draw = @import("./png/lib/draw.zig");
 
 pub fn main(init: std.process.Init) !void {
-    var allocator = std.heap.page_allocator;
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
+    const allocator = gpa.allocator();
+    defer {
+        const deinit_status = gpa.deinit();
+        // fail test; can't try in defer as defer is executed after we return
+        if (deinit_status == .leak) std.testing.expect(false) catch @panic("TEST FAIL");
+    }
 
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
@@ -29,7 +35,6 @@ pub fn main(init: std.process.Init) !void {
 
     var invert: u8 = 0;
     var square: u16 = 10;
-    var path_string: []u8 = &[_]u8{}; // empty fallback
     if (res.args.help != 0) {
         std.debug.print("Help for Triarch-Png-Decompressor.\n\n", .{});
         std.debug.print("-h, --help             Display this help and exit.\n", .{});
@@ -39,10 +44,8 @@ pub fn main(init: std.process.Init) !void {
         std.debug.print("-i, --invert <INT>     Invert the png. 0 means no, 1 means invert. (0 / 1) (def: 0)\n\n", .{});
         return;
     }
-    if (res.args.path) |p| {
-        path_string = try allocator.alloc(u8, p.len);
-        std.mem.copyForwards(u8, path_string, p);
-    }
+
+    const path_string = res.args.path orelse "";
     if (res.args.verbose) |v|
         std.debug.print("--verbose = {d}\n", .{v});
     
@@ -61,6 +64,7 @@ pub fn main(init: std.process.Init) !void {
     // INIT PNG DECOMPRESSION + GRAYSCALE
 	var decompressed = try Decompressor.decompressPng(allocator, path_string);
     defer decompressed.pixels.deinit(allocator);
+    defer decompressed.png.PLTE.rgb_array.deinit(allocator);
 
     if(decompressed.png.IHDR.width < square or decompressed.png.IHDR.height < square) {
         std.debug.print("Square size cannot be larger than width or height!", .{});

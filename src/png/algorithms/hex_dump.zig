@@ -26,7 +26,7 @@ pub const Error = error{
     FileNotFound,
 };
 
-pub fn getHexDump(allocator: std.mem.Allocator, file_path: []u8) !std.ArrayList(u8) {
+pub fn getHexDump(allocator: std.mem.Allocator, file_path: []const u8) !std.ArrayList(u8) {
     var threaded: std.Io.Threaded = .init_single_threaded;
 
     const dir = std.Io.Dir.cwd();
@@ -54,10 +54,10 @@ pub fn getHexDump(allocator: std.mem.Allocator, file_path: []u8) !std.ArrayList(
     };
 
     var hex_dumps = try std.ArrayList(u8).initCapacity(allocator, 30);
+    defer hex_dumps.deinit(allocator);
     for (hex_dump.items) |dump| {
         try hex_dumps.appendSlice(allocator, dump);
     }
-    defer hex_dumps.deinit(allocator);
 
     const converted_binary = try String.removeWhitespace(allocator, hex_dumps.items);
     return converted_binary;

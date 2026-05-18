@@ -11,6 +11,7 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 	// INIT PNG DECOMPRESSION + GRAYSCALE
 	var decompressed = try Decompressor.decompressPng(allocator, full_path);
 	defer decompressed.pixels.deinit(allocator);
+	defer decompressed.png.PLTE.rgb_array.deinit(allocator);
 
 	// INIT GRAY SCALING
 	var gray_scaled = try Grayscale.getGrayscale(allocator, decompressed.pixels.items, false);
@@ -18,13 +19,20 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 
 	// INIT HEATMAP
 	var heatmap = try Heatmap.getHeatmap(
-		allocator, 
+		allocator,
 		&decompressed.png, 
-		gray_scaled.items, 
+		gray_scaled.items,
 		false,
 		@intCast(decompressed.png.IHDR.width),
-		@intCast(decompressed.png.IHDR.height)
+		@intCast(decompressed.png.IHDR.height),
 	);
+	defer {
+		for (heatmap.items) |row| {
+			allocator.free(row);
+		}
+
+		heatmap.deinit(allocator);
+	}
 
 	var heatmap_flat = try std.ArrayList(f32).initCapacity(allocator, 30);
 	for(0..heatmap.items.len) |i|{
@@ -34,7 +42,6 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 			try heatmap_flat.append(allocator, p);
 		}
 	}
-	defer heatmap.deinit(allocator);
 
 	return heatmap_flat;
 }

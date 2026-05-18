@@ -14,25 +14,25 @@ pub fn drawPng(
 	square: u16
 ) !void {
     // INIT GRAY SCALING
-	var gray_scaled = Grayscale.getGrayscale(allocator, pixels, true) catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("Grayscaling failed.");
-    };
+	var gray_scaled = try Grayscale.getGrayscale(allocator, pixels, true);
     defer gray_scaled.deinit(allocator);
 
     // INIT HEATMAP
-    var heatmap = Heatmap.getHeatmap(
+    var heatmap = try Heatmap.getHeatmap(
         allocator, 
         &png, 
         gray_scaled.items, 
         invert,
         square,
         square
-    ) catch |err| {
-        std.debug.print("{any}\n", .{err});
-        @panic("Heatmapping failed.");
-    };
-    defer heatmap.deinit(allocator);
+    );
+	defer {
+		for (heatmap.items) |row| {
+			allocator.free(row);
+		}
+
+		heatmap.deinit(allocator);
+	}
 
     std.debug.print("DRAWING NUMBER:\n", .{});
     for(0..heatmap.items.len) |i| {

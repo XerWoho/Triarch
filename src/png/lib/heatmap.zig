@@ -4,7 +4,14 @@ const PIXEL_TYPE = @import("../../png/types/pixels.zig");
 
 const Constants = @import("../constants.zig");
 
-pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, grayscale_data: []PIXEL_TYPE.PixelStruct, invert: bool, split_w: u16, split_h: u16) !std.ArrayList([]f32) {
+pub fn getHeatmap(
+    allocator: std.mem.Allocator, 
+    png: *const PngTypes.PNGStruct, 
+    grayscale_data: []PIXEL_TYPE.PixelStruct, 
+    invert: bool, 
+    split_w: u16, 
+    split_h: u16,
+) !std.ArrayList([]f32) {
     const WIDTH = png.IHDR.width;
     const HEIGHT = png.IHDR.height;
     const WIDTH_1P: u16 = @divTrunc(WIDTH, 10); // 10 Percent of the Width
@@ -29,7 +36,10 @@ pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, 
     var main_height_index: u64 = 0;
     var main_width_index: u64 = 0;
     while (main_height_index < HEIGHT) {
+        REMAINDER_WIDTH = WIDTH % split_w;
+
         var HEATMAP_ROW = try std.ArrayList(f32).initCapacity(allocator, 30);
+        defer HEATMAP_ROW.deinit(allocator);
         var EXTRA_HEIGHT: u8 = 0;
         if (REMAINDER_HEIGHT > 0) {
             EXTRA_HEIGHT = 1;
@@ -92,7 +102,8 @@ pub fn getHeatmap(allocator: std.mem.Allocator, png: *const PngTypes.PNGStruct, 
             main_width_index += SPLIT_WIDTH;
         }
 
-        try HEATMAP.append(allocator, HEATMAP_ROW.items);
+        const owned_row = try HEATMAP_ROW.toOwnedSlice(allocator);
+        try HEATMAP.append(allocator, owned_row);
         main_height_index += SPLIT_HEIGHT;
         main_width_index = 0;
     }

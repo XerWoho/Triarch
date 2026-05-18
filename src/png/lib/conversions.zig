@@ -54,6 +54,7 @@ pub fn hexToBinary(allocator: std.mem.Allocator, hex: []u8, lsb: bool) !std.Arra
     var index: u32 = 0;
 
     var byte = try std.ArrayList(u8).initCapacity(allocator, 30);
+    defer byte.deinit(allocator);
     while (index < hex.len) {
         const H = hex[index .. index + 1];
 
@@ -92,7 +93,6 @@ pub fn intToHex(allocator: std.mem.Allocator, byte: u32) !std.ArrayList(u8) {
     var last_stored_quotient: u32 = byte;
 
     var return_string = try std.ArrayList(u8).initCapacity(allocator, 30);
-
     while (last_stored_quotient != 0) {
         // does division
         multiple = 0;

@@ -44,9 +44,9 @@ cost_gradient_biases: []f32,
 num_nodes_in: usize,
 num_nodes_out: usize,
 
-pub fn create(num_nodes_in: usize, num_nodes_out: usize) !Layer {
-    const allocator = std.heap.page_allocator;
+allocator: std.mem.Allocator,
 
+pub fn create(allocator: std.mem.Allocator, num_nodes_in: usize, num_nodes_out: usize) !Layer {
     const cost_gradient_biases = try allocator.alloc(f32, num_nodes_out);
     for (0..num_nodes_out) |nodes_out_index| {
         cost_gradient_biases[nodes_out_index] = 0;
@@ -87,6 +87,8 @@ pub fn create(num_nodes_in: usize, num_nodes_out: usize) !Layer {
     }
 
     return .{
+        .allocator = allocator,
+
         .weights = weights,
         .biases = biases,
 
@@ -100,6 +102,17 @@ pub fn create(num_nodes_in: usize, num_nodes_out: usize) !Layer {
         .num_nodes_in = num_nodes_in,
         .num_nodes_out = num_nodes_out,
     };
+}
+
+pub fn deinit(self: *Layer) void {
+    self.allocator.free(self.activations);
+    self.allocator.free(self.z_values);
+    self.allocator.free(self.delta_values);
+    self.allocator.free(self.biases);
+    self.allocator.free(self.cost_gradient_biases);
+
+    self.weights.deinit();
+    self.cost_gradient_weights.deinit();
 }
 
 pub fn feedForward(self: *Layer, inputs: []f32) ![]f32 {
@@ -117,8 +130,7 @@ pub fn feedForward(self: *Layer, inputs: []f32) ![]f32 {
 }
 
 pub fn computeOutputDeltas(self: *Layer, expected: []f32) ![]f32 {
-    const allocator = std.heap.page_allocator;
-    var delta_values: []f32 = try allocator.alloc(f32, expected.len);
+    var delta_values: []f32 = try self.allocator.alloc(f32, expected.len);
     for (0..delta_values.len) |i| {
         const cost_derivative = mseDerivative(self.activations[i], expected[i]);
         const activation_derivative = sigmoidDerivative(self.z_values[i]);
@@ -129,9 +141,7 @@ pub fn computeOutputDeltas(self: *Layer, expected: []f32) ![]f32 {
 }
 
 pub fn computeHiddenDeltas(self: *Layer, next_layer: *Layer, next_delta_values: []f32) ![]f32 {
-    const allocator = std.heap.page_allocator;
-
-    var delta_values: []f32 = try allocator.alloc(f32, self.num_nodes_out);
+    var delta_values: []f32 = try self.allocator.alloc(f32, self.num_nodes_out);
 
     for (0..delta_values.len) |delta_value_index| {
         var delta_value: f32 = 0;

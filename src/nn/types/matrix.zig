@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const Matrix = @This();
 
+allocator: std.mem.Allocator,
 data: []f32,
 in: usize, // node in
 out: usize, // node out
@@ -14,10 +15,15 @@ pub fn init(
     const data = try allocator.alloc(f32, in * out);
 
     return .{
+        .allocator = allocator,
         .data = data,
         .in = in,
         .out = out,
     };
+}
+
+pub fn deinit(self: *Matrix) void {
+    self.allocator.free(self.data);
 }
 
 pub fn updateValueAt(self: *Matrix, in: usize, out: usize, value: f32) void {

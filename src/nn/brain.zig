@@ -24,7 +24,12 @@ pub fn brain(allocator: std.mem.Allocator) !void {
         "src/nn/data/mnist_train/",
     );
     const train_file_list = try train_file_list_alloc.toOwnedSlice(allocator);
-    defer allocator.free(train_file_list);
+    defer {
+        for(train_file_list) |f| {
+            allocator.free(f);
+        }
+        allocator.free(train_file_list);
+    }
 
     const LEARNING_RATE = 0.08;
     const MNIST_IMAGES_DISTANCE_PER_NUMBER = 6500;
@@ -33,7 +38,8 @@ pub fn brain(allocator: std.mem.Allocator) !void {
     const OUTPUT_NODES_AMOUNT = 10;
 
     var layer_sizes: [3]usize = .{ INPUT_NODES_AMOUNT, HIDDEN_NODES_AMOUNT, OUTPUT_NODES_AMOUNT, };
-    var nn = try NeuralNetwork.create(&layer_sizes);
+    var nn = try NeuralNetwork.create(allocator, &layer_sizes);
+    defer nn.deinit();
 
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();

@@ -154,18 +154,6 @@ fn getAncillary(allocator: std.mem.Allocator, png: *PngTypes.PNGStruct, binary: 
         const ancillary_header_data = binary[current_bit_position .. current_bit_position + 2 * ancillary_header_size];
         _ = ancillary_header_data;
         current_bit_position += 2 * ancillary_header_size;
-        // std.debug.print("{s}\n", .{ancillary_header_data});
-        // if(std.mem.eql(u8, ancillary_header_slice, Constants.sRGB_SIG)) {
-        //     const srgb_rendering_intent = try Conversions.hexToInt(allocator, ancillary_header_data, u32);
-        // }
-        // if(std.mem.eql(u8, ancillary_header_slice, Constants.pHYs_SIG)) {
-        //     const pixels_unit_x = try Conversions.hexToInt(allocator, ancillary_header_data[0..8], u32);
-        //     const pixels_unit_y = try Conversions.hexToInt(allocator, ancillary_header_data[8..16], u32);
-        //     const pixels_unit_specifier = try Conversions.hexToInt(allocator, ancillary_header_data[16..18], u32);
-        // }
-        // if(std.mem.eql(u8, ancillary_header_slice, Constants.gAMA_SIG)) {
-        //     const gama_value = try Conversions.hexToInt(allocator, ancillary_header_data, u32);
-        // }
 
         const ancillary_header_crc = binary[current_bit_position .. current_bit_position + Constants.BYTE_LENGTH];
         _ = ancillary_header_crc;

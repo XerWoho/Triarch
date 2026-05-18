@@ -16,7 +16,7 @@ const DecompressedPngStruct = struct {
     pixels: std.ArrayList(PixelTypes.PixelStruct),
 };
 
-pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !DecompressedPngStruct {
+pub fn decompressPng(allocator: std.mem.Allocator, path_string: []const u8) !DecompressedPngStruct {
     var allocated_hex_dump = HexDump.getHexDump(allocator, path_string) catch |err| {
         std.debug.print("Error: {s}\n", .{@errorName(err)});
         std.process.exit(0);
@@ -32,11 +32,10 @@ pub fn decompressPng(allocator: std.mem.Allocator, path_string: []u8) !Decompres
 
     // CONVERT PNG DATA
     var data = try std.ArrayList(u8).initCapacity(allocator, 30);
+    defer data.deinit(allocator);
     for (png.IDAT.items) |idat| {
         try data.appendSlice(allocator, idat.data);
     }
-
-    defer data.deinit(allocator);
     var binary_hex = Conversions.hexToBinary(allocator, data.items, true) catch |err| {
         std.debug.print("{any}\n", .{err});
         @panic("Binary to hex conversion failed.");

@@ -3,18 +3,26 @@ const Layer = @import("./layer.zig");
 
 pub const NeuralNetwork = @This();
 
+allocator: std.mem.Allocator,
 layers: []Layer,
 
-pub fn create(layerSizes: []usize) !NeuralNetwork {
-    const allocator = std.heap.page_allocator;
+pub fn create(allocator: std.mem.Allocator, layerSizes: []usize) !NeuralNetwork {
     var layers = try allocator.alloc(Layer, layerSizes.len - 1);
     for (0..layers.len) |i| {
-        layers[i] = try Layer.create(layerSizes[i], layerSizes[i + 1]);
+        layers[i] = try Layer.create(allocator, layerSizes[i], layerSizes[i + 1]);
     }
 
     return .{
+        .allocator = allocator,
         .layers = layers,
     };
+}
+
+pub fn deinit(self: *NeuralNetwork) void {
+    for(self.layers) |*layer| {
+        layer.deinit();
+    }
+    self.allocator.free(self.layers);
 }
 
 pub fn feedForward(self: *NeuralNetwork, inputs: []f32) !void {
@@ -52,10 +60,13 @@ pub fn backpropagate(self: *NeuralNetwork, inputs: []f32, expected: []f32) !void
     while(true) {
         var next_layer = self.layers[last_hidden_layer_index + 1];
         var hidden_layer = self.layers[last_hidden_layer_index];
-        delta_values = try hidden_layer.computeHiddenDeltas(
+        const new_delta_values = try hidden_layer.computeHiddenDeltas(
             &next_layer,
             delta_values,
         );
+
+        self.allocator.free(delta_values);
+        delta_values = new_delta_values;
 
         if(last_hidden_layer_index == 0) {
             try hidden_layer.accumulateGradients(inputs, delta_values);
@@ -65,6 +76,8 @@ pub fn backpropagate(self: *NeuralNetwork, inputs: []f32, expected: []f32) !void
         try hidden_layer.accumulateGradients(self.layers[last_hidden_layer_index - 1].activations, delta_values);
         last_hidden_layer_index -= 1;
     }
+
+    self.allocator.free(delta_values);
 }
 
 pub fn applyGradients(self: *NeuralNetwork, learnRate: f32) !void {
