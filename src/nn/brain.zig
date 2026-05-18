@@ -60,6 +60,8 @@ pub fn brain(allocator: std.mem.Allocator) !void {
             var flat_file = try FlatHeatmap.createFlatHeatmap(
                 allocator,
                 &.{ "src/nn/data/mnist_train", train_file_list[random_file_entry] },
+                28,
+                28,
             );
             defer flat_file.deinit(allocator);
             const inputs = flat_file.items;

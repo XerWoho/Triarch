@@ -3,7 +3,12 @@ const Decompressor = @import("../../png/decompressor.zig");
 const Grayscale = @import("../../png/lib/grayscale.zig");
 const Heatmap = @import("../../png/lib/heatmap.zig");
 
-pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []const u8) !std.ArrayList(f32) {
+pub fn createFlatHeatmap(
+	allocator: std.mem.Allocator, 
+	entry_name: []const []const u8,
+	width: usize,
+	height: usize,
+) !std.ArrayList(f32) {
 	// Get full path
 	const full_path = try std.fs.path.join(allocator, entry_name);
 	defer allocator.free(full_path);
@@ -20,11 +25,11 @@ pub fn createFlatHeatmap(allocator: std.mem.Allocator, entry_name: []const []con
 	// INIT HEATMAP
 	var heatmap = try Heatmap.getHeatmap(
 		allocator,
-		&decompressed.png, 
+		&decompressed.png,
 		gray_scaled.items,
 		false,
-		@intCast(decompressed.png.IHDR.width),
-		@intCast(decompressed.png.IHDR.height),
+		@intCast(width),
+		@intCast(height),
 	);
 	defer {
 		for (heatmap.items) |row| {
